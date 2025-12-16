@@ -78,6 +78,7 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     const action = data.action;
+    Logger.log('[doPost] action=%s payload=%s', action, JSON.stringify(data));
     let result;
 
     if (action === 'getInitialConfig') result = getInitialConfig();
@@ -93,8 +94,14 @@ function doPost(e) {
     else if (action === 'changeBookingStatus') result = changeBookingStatus(data.id, data.status);
     else throw new Error("Unknown action: " + action);
 
+    if (!result || typeof result !== 'object' || typeof result.success === 'undefined') {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, message: 'Invalid response for action ' + action }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
+    Logger.log('[doPost][error] %s', err);
     return ContentService.createTextOutput(JSON.stringify({ success: false, message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
 }
@@ -501,7 +508,7 @@ function addBooking(data) {
   const timezone = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
 
   const dateStr = data.date;
-  const dateObj = dateStr ? new Date(dateStr) : null;
+  const dateObj = dateStr ? new Date(`${dateStr}T00:00:00`) : null;
   if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
     return { success: false, message: 'Invalid booking date' };
   }
@@ -548,7 +555,8 @@ function addBooking(data) {
       price: price,
       total: total,
       prepayment: prepayment,
-      status: BOOKING_STATUSES.planned
+      status: BOOKING_STATUSES.planned,
+      date: Utilities.formatDate(dateObj, timezone, 'yyyy-MM-dd')
     }
   };
 }
@@ -559,6 +567,7 @@ function updateBooking(id, data) {
   const lastRow = bookingSheet.getLastRow();
 
   if (!id || lastRow < 2) {
+    Logger.log('[updateBooking] missing id or empty sheet: %s', id);
     return { success: false, message: 'Booking not found', id: id };
   }
 
@@ -576,6 +585,7 @@ function updateBooking(id, data) {
   });
 
   if (targetIndex === -1 || !rowData) {
+    Logger.log('[updateBooking] ID not found: %s', id);
     return { success: false, message: 'Booking not found', id: id };
   }
 
@@ -586,7 +596,7 @@ function updateBooking(id, data) {
   }
 
   const dateStr = data.date;
-  const dateObj = dateStr ? new Date(dateStr) : null;
+  const dateObj = dateStr ? new Date(`${dateStr}T00:00:00`) : null;
   if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
     return { success: false, message: 'Invalid booking date', id: id };
   }
@@ -644,6 +654,7 @@ function changeBookingStatus(id, status) {
 
   const lastRow = bookingSheet.getLastRow();
   if (lastRow < 2) {
+    Logger.log('[changeBookingStatus] empty sheet for id=%s', id);
     return { success: false, message: 'Booking not found', id: id, status: status };
   }
 
@@ -662,6 +673,7 @@ function changeBookingStatus(id, status) {
   });
 
   if (targetIndex === -1 || !rowData) {
+    Logger.log('[changeBookingStatus] ID not found: %s', id);
     return { success: false, message: 'Booking not found', id: id, status: status };
   }
 
@@ -701,6 +713,8 @@ function changeBookingStatus(id, status) {
     // Добавляем только новые доходы, чтобы не пересчитывать прошлые записи
     incomeSheet.getRange(incomeSheet.getLastRow() + 1, 1, incomeRows.length, 5).setValues(incomeRows);
   }
+
+  Logger.log('[changeBookingStatus] Updated id=%s from %s to %s', id, currentStatus, status);
 
   const updatedBooking = {
     id: id,
