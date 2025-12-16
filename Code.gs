@@ -1,0 +1,307 @@
+/**
+ * ⚠ SOURCE OF TRUTH:
+ * Этот файл дублирует Code.gs из Google Apps Script.
+ * Все изменения сначала тестируются в Codex,
+ * затем вручную переносятся в GAS.
+ */
+
+
+// =========================================
+// 1. КОНФИГУРАЦИЯ
+// =========================================
+const INCOME_SHEET = 'Мастер Классы';
+const EXPENSE_SHEET = 'Расходные материалы';
+const REF_SHEET = 'Справочник';
+
+// =========================================
+// 2. ИНИЦИАЛИЗАЦИЯ И СВЯЗЬ
+// =========================================
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('🚀 Аналитика')
+    .addItem('🟡 Венера ', 'openAppWindow')
+    .addToUi();
+}
+
+function openAppWindow() {
+  var template = HtmlService.createTemplateFromFile('Index');
+  var html = template.evaluate()
+      .setTitle('Мастерская Венера')
+      .setWidth(1450).setHeight(900)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Мастерская Венера');
+}
+
+function doGet(e) {
+  return HtmlService.createTemplateFromFile('Index').evaluate()
+      .setTitle('CRM Mobile')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const action = data.action;
+    let result;
+
+    if (action === 'getInitialConfig') result = getInitialConfig();
+    else if (action === 'saveTransaction') result = saveTransaction(data);
+    else if (action === 'getTableData') result = getTableData(data.type);
+    else if (action === 'editTransaction') result = editTransaction(data);
+    else if (action === 'deleteTransaction') result = deleteTransaction(data);
+    else if (action === 'getAnalyticsData') result = getAnalyticsData(data.year, data.monthIdx);
+    else throw new Error("Unknown action: " + action);
+
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// =========================================
+// 3. БАЗОВЫЕ МЕТОДЫ
+// =========================================
+
+function getInitialConfig() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const refSheet = ss.getSheetByName(REF_SHEET);
+  let incomeItems = [], expenseItems = [];
+  
+  if (refSheet) {
+    const lastRow = refSheet.getLastRow();
+    if (lastRow > 1) {
+      const data = refSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+      data.forEach(r => {
+        if(r[0]) incomeItems.push(String(r[0]).trim());
+        if(r[1]) expenseItems.push(String(r[1]).trim());
+      });
+    }
+  }
+  
+  const years = new Set([new Date().getFullYear()]);
+  [INCOME_SHEET, EXPENSE_SHEET].forEach(name => {
+     const s = ss.getSheetByName(name);
+     if(s && s.getLastRow() > 1) {
+        const dates = s.getRange(2, 1, s.getLastRow()-1, 1).getValues();
+        dates.forEach(r => { if(r[0] instanceof Date) years.add(r[0].getFullYear()); });
+     }
+  });
+  return {
+    incomeItems: incomeItems,
+    expenseItems: expenseItems,
+    years: Array.from(years).sort((a,b)=>b-a),
+    months: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+  };
+}
+
+function saveTransaction(data) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetName = data.type === 'income' ? INCOME_SHEET : EXPENSE_SHEET;
+    let sheet = ss.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      sheet.appendRow(["Дата", "Название", "Кол-во", "Цена", "Итого"]); 
+    }
+
+    const date = new Date();
+    let rowData = (data.type === 'income') 
+        ? [date, data.name, data.qty, data.price, data.total] 
+        : [date, data.name, data.price, data.qty, data.total];
+
+    sheet.appendRow(rowData);
+    if (data.isNew) {
+      const refSheet = ss.getSheetByName(REF_SHEET);
+      if (refSheet) {
+        const col = data.type === 'income' ? 1 : 2;
+        const lastRow = refSheet.getLastRow();
+        let targetRow = lastRow + 1;
+        // Простая проверка пустых ячеек
+        const range = refSheet.getRange(1, col, lastRow + 5, 1).getValues();
+        for(let i=1; i<range.length; i++) {
+           if(!range[i][0]) { targetRow = i+1; break; }
+        }
+        refSheet.getRange(targetRow, col).setValue(data.name);
+      }
+    }
+    return { success: true, message: "Добавлено" };
+  } catch (e) {
+    return { success: false, message: "Ошибка: " + e.toString() };
+  }
+}
+
+function getTableData(type) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sName = (type === 'income') ? INCOME_SHEET : EXPENSE_SHEET;
+  const sheet = ss.getSheetByName(sName);
+  
+  if(!sheet || sheet.getLastRow() < 2) return [];
+
+  const lastRow = sheet.getLastRow();
+  const limit = 50;
+  const startRow = Math.max(2, lastRow - limit + 1);
+  const numRows = lastRow - startRow + 1;
+  if (numRows < 1) return [];
+
+  const vals = sheet.getRange(startRow, 1, numRows, 5).getValues();
+  let result = [];
+  for(let i = vals.length - 1; i >= 0; i--) {
+    const r = vals[i];
+    if(!r[0]) continue;
+    result.push({
+      rowId: startRow + i,
+      dateStr: Utilities.formatDate(r[0], ss.getSpreadsheetTimeZone(), "dd.MM.yyyy"),
+      name: r[1],
+      qty: (type === 'income') ? r[2] : r[3],
+      price: (type === 'income') ? r[3] : r[2],
+      total: r[4]
+    });
+  }
+  return result;
+}
+
+function editTransaction(data) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sName = (data.type === 'income') ? INCOME_SHEET : EXPENSE_SHEET;
+    const sheet = ss.getSheetByName(sName);
+    const total = data.price * data.qty;
+    let vals = (data.type === 'income') ? [[data.name, data.qty, data.price, total]] : [[data.name, data.price, data.qty, total]];
+    sheet.getRange(data.rowId, 2, 1, 4).setValues(vals);
+    return { success: true };
+  } catch(e) { return { success: false, message: e.toString() }; }
+}
+
+function deleteTransaction(data) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sName = (data.type === 'income') ? INCOME_SHEET : EXPENSE_SHEET;
+    const sheet = ss.getSheetByName(sName);
+    sheet.deleteRow(data.rowId);
+    return { success: true };
+  } catch(e) { return { success: false, message: e.toString() }; }
+}
+
+// =========================================
+// 4. АНАЛИТИКА
+// =========================================
+
+function getAnalyticsData(year, monthIdx) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const res = { 
+    current: { income: 0, expense: 0, profit: 0, visitors: 0, avgCheck: 0 },
+    prev: { income: 0, expense: 0, profit: 0, visitors: 0 },
+    growth: { income: 0, expense: 0, profit: 0, visitors: 0 },
+    pulse: { labels: [], income: [], expense: [], profit: [] },
+    pieIncome: { labels: [], data: [] },
+    pieExpense: { labels: [], data: [] },
+    attendance: { labels: [], data: [] },
+    avgCheckChart: { labels: [], data: [] }
+  };
+  
+  const y = parseInt(year);
+  const m = monthIdx === 'all' ? null : parseInt(monthIdx);
+  let dStart, dEnd, pStart, pEnd;
+  
+  if (m === null) { 
+     dStart = new Date(y, 0, 1);
+     dEnd = new Date(y, 11, 31, 23, 59, 59);
+     pStart = new Date(y - 1, 0, 1);
+     pEnd = new Date(y - 1, 11, 31, 23, 59, 59);
+  } else { 
+     dStart = new Date(y, m, 1);
+     dEnd = new Date(y, m + 1, 0, 23, 59, 59);
+     let pm = m - 1;
+     let py = y; if (pm < 0) { pm = 11; py = y - 1; }
+     pStart = new Date(py, pm, 1);
+     pEnd = new Date(py, pm + 1, 0, 23, 59, 59);
+  }
+
+  let trendData = {};
+  let incomeCats = {};
+  let expenseCats = {};
+  const getTrendKey = (date) => (m === null) ? date.getMonth() : date.getDate();
+  const steps = (m === null) ? 12 : new Date(y, m+1, 0).getDate();
+  
+  for(let i = (m === null ? 0 : 1); i <= (m === null ? 11 : steps); i++) {
+      trendData[i] = { inc: 0, exp: 0, vis: 0 };
+  }
+
+  function processSheet(sName, type) {
+    const s = ss.getSheetByName(sName);
+    if(!s || s.getLastRow() < 2) return;
+    const data = s.getRange(2, 1, s.getLastRow()-1, 5).getValues();
+    
+    data.forEach(r => {
+      const d = r[0];
+      if(!(d instanceof Date)) return;
+      const sum = parseFloat(r[4]) || 0;
+      const qty = (type === 'income') ? (parseFloat(r[2]) || 0) : 0;
+      const name = String(r[1]);
+
+      if (d >= dStart && d <= dEnd) {
+         if (type === 'income') {
+            res.current.income += sum; res.current.visitors += qty;
+            incomeCats[name] = (incomeCats[name] || 0) + sum;
+         } else {
+            res.current.expense += sum;
+            expenseCats[name] = (expenseCats[name] || 0) + sum;
+         }
+         const k = getTrendKey(d);
+         if (trendData[k]) {
+            if (type === 'income') { trendData[k].inc += sum; trendData[k].vis += qty; }
+            else trendData[k].exp += sum;
+         }
+      }
+      if (d >= pStart && d <= pEnd) {
+         if (type === 'income') { res.prev.income += sum; res.prev.visitors += qty; }
+         else { res.prev.expense += sum; }
+      }
+    });
+  }
+
+  processSheet(INCOME_SHEET, 'income');
+  processSheet(EXPENSE_SHEET, 'expense');
+  
+  res.current.profit = res.current.income - res.current.expense;
+  res.prev.profit = res.prev.income - res.prev.expense;
+  if (res.current.visitors > 0) res.current.avgCheck = Math.round(res.current.income / res.current.visitors);
+  
+  const calcGrowth = (curr, prev) => {
+     if (prev === 0) return curr > 0 ? 100 : 0;
+     return Math.round(((curr - prev) / prev) * 100);
+  };
+  
+  res.growth.income = calcGrowth(res.current.income, res.prev.income);
+  res.growth.expense = calcGrowth(res.current.expense, res.prev.expense);
+  res.growth.profit = calcGrowth(res.current.profit, res.prev.profit);
+  res.growth.visitors = calcGrowth(res.current.visitors, res.prev.visitors);
+
+  const monthNames = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
+  Object.keys(trendData).sort((a,b) => parseInt(a)-parseInt(b)).forEach(k => {
+     const label = (m === null) ? monthNames[k] : k;
+     res.pulse.labels.push(label);
+     res.pulse.income.push(trendData[k].inc);
+     res.pulse.expense.push(trendData[k].exp);
+     res.pulse.profit.push(trendData[k].inc - trendData[k].exp);
+     
+     res.attendance.labels.push(label);
+     res.attendance.data.push(trendData[k].vis);
+     
+     res.avgCheckChart.labels.push(label);
+     const avg = trendData[k].vis > 0 ? Math.round(trendData[k].inc / trendData[k].vis) : 0;
+     res.avgCheckChart.data.push(avg);
+  });
+  
+  const sortedInc = Object.entries(incomeCats).sort((a,b) => b[1] - a[1]).slice(0, 5);
+  res.pieIncome.labels = sortedInc.map(x => x[0]);
+  res.pieIncome.data = sortedInc.map(x => x[1]);
+  
+  const sortedExp = Object.entries(expenseCats).sort((a,b) => b[1] - a[1]).slice(0, 5);
+  res.pieExpense.labels = sortedExp.map(x => x[0]);
+  res.pieExpense.data = sortedExp.map(x => x[1]);
+  
+  return res;
+}
