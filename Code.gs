@@ -12,6 +12,41 @@
 const INCOME_SHEET = 'Мастер Классы';
 const EXPENSE_SHEET = 'Расходные материалы';
 const REF_SHEET = 'Справочник';
+const BOOKING_SHEET = 'Календарь_Брони';
+
+const BOOKING_HEADERS = [
+  'ID',
+  'Дата',
+  'Время_Начала',
+  'Время_Окончания',
+  'Название',
+  'Цена',
+  'Количество',
+  'Сумма',
+  'Предоплата',
+  'Статус',
+  'Дата_Создания'
+];
+
+const BOOKING_COLS = {
+  id: 1,
+  date: 2,
+  startTime: 3,
+  endTime: 4,
+  title: 5,
+  price: 6,
+  participants: 7,
+  total: 8,
+  prepayment: 9,
+  status: 10,
+  createdAt: 11
+};
+
+const BOOKING_STATUSES = {
+  planned: 'planned',
+  done: 'done',
+  canceled: 'canceled'
+};
 
 // =========================================
 // 2. ИНИЦИАЛИЗАЦИЯ И СВЯЗЬ
@@ -51,6 +86,11 @@ function doPost(e) {
     else if (action === 'editTransaction') result = editTransaction(data);
     else if (action === 'deleteTransaction') result = deleteTransaction(data);
     else if (action === 'getAnalyticsData') result = getAnalyticsData(data.year, data.monthIdx);
+    else if (action === 'getCalendarData') result = getCalendarData(data.year, data.month);
+    else if (action === 'getBookingsByDate') result = getBookingsByDate(data.date);
+    else if (action === 'addBooking') result = addBooking(data);
+    else if (action === 'updateBooking') result = updateBooking(data.id, data);
+    else if (action === 'changeBookingStatus') result = changeBookingStatus(data.id, data.status);
     else throw new Error("Unknown action: " + action);
 
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
@@ -190,7 +230,7 @@ function deleteTransaction(data) {
 
 function getAnalyticsData(year, monthIdx) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const res = { 
+  const res = {
     current: { income: 0, expense: 0, profit: 0, visitors: 0, avgCheck: 0 },
     prev: { income: 0, expense: 0, profit: 0, visitors: 0 },
     growth: { income: 0, expense: 0, profit: 0, visitors: 0 },
@@ -302,6 +342,86 @@ function getAnalyticsData(year, monthIdx) {
   const sortedExp = Object.entries(expenseCats).sort((a,b) => b[1] - a[1]).slice(0, 5);
   res.pieExpense.labels = sortedExp.map(x => x[0]);
   res.pieExpense.data = sortedExp.map(x => x[1]);
-  
+
   return res;
+}
+
+// =========================================
+// 5. КАЛЕНДАРЬ БРОНИРОВАНИЙ (АРХИТЕКТУРА)
+// =========================================
+
+function ensureBookingSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(BOOKING_SHEET);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(BOOKING_SHEET);
+    sheet.appendRow(BOOKING_HEADERS);
+    return sheet;
+  }
+
+  const headerRange = sheet.getRange(1, 1, 1, BOOKING_HEADERS.length);
+  const headerValues = headerRange.getValues()[0];
+  const hasHeaders = headerValues.some(value => Boolean(value));
+  if (!hasHeaders) {
+    headerRange.setValues([BOOKING_HEADERS]);
+  }
+
+  return sheet;
+}
+
+function isValidBookingStatus(status) {
+  return Object.values(BOOKING_STATUSES).indexOf(status) !== -1;
+}
+
+function getCalendarData(year, month) {
+  ensureBookingSheet();
+  return {
+    success: true,
+    filters: { year: year, month: month },
+    bookings: [],
+    meta: { message: 'Calendar data is not implemented yet' }
+  };
+}
+
+function getBookingsByDate(date) {
+  ensureBookingSheet();
+  return {
+    success: true,
+    date: date,
+    bookings: [],
+    meta: { message: 'Bookings retrieval is not implemented yet' }
+  };
+}
+
+function addBooking(data) {
+  ensureBookingSheet();
+  return {
+    success: false,
+    message: 'addBooking is not implemented yet',
+    payload: data
+  };
+}
+
+function updateBooking(id, data) {
+  ensureBookingSheet();
+  return {
+    success: false,
+    message: 'updateBooking is not implemented yet',
+    id: id,
+    payload: data
+  };
+}
+
+function changeBookingStatus(id, status) {
+  ensureBookingSheet();
+  if (!isValidBookingStatus(status)) {
+    return { success: false, message: 'Invalid booking status', id: id, status: status };
+  }
+  return {
+    success: false,
+    message: 'changeBookingStatus is not implemented yet',
+    id: id,
+    status: status
+  };
 }
