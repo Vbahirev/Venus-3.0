@@ -428,12 +428,52 @@ function getCalendarData(year, month) {
 }
 
 function getBookingsByDate(date) {
-  ensureBookingSheet();
+  const sheet = ensureBookingSheet();
+  const timezone = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+  const [year, month, day] = String(date || '').split('-').map(Number);
+
+  if (!year || !month || !day) {
+    return { success: false, message: 'Invalid date format', date: date, bookings: [] };
+  }
+
+  const targetDate = new Date(year, month - 1, day); // Локальная дата без смещения часового пояса
+  const targetKey = Utilities.formatDate(targetDate, timezone, 'yyyy-MM-dd');
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return { success: true, date: targetKey, bookings: [] };
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, BOOKING_HEADERS.length).getValues();
+  const bookings = [];
+
+  values.forEach(row => {
+    const dateCell = row[BOOKING_COLS.date - 1];
+    if (!(dateCell instanceof Date)) return;
+
+    const rowDateKey = Utilities.formatDate(dateCell, timezone, 'yyyy-MM-dd');
+    if (rowDateKey !== targetKey) return;
+
+    const startTimeCell = row[BOOKING_COLS.startTime - 1];
+    const endTimeCell = row[BOOKING_COLS.endTime - 1];
+
+    bookings.push({
+      id: row[BOOKING_COLS.id - 1],
+      name: row[BOOKING_COLS.title - 1],
+      startTime: (startTimeCell instanceof Date) ? Utilities.formatDate(startTimeCell, timezone, 'HH:mm') : '',
+      endTime: (endTimeCell instanceof Date) ? Utilities.formatDate(endTimeCell, timezone, 'HH:mm') : '',
+      qty: Number(row[BOOKING_COLS.participants - 1]) || 0,
+      price: Number(row[BOOKING_COLS.price - 1]) || 0,
+      total: Number(row[BOOKING_COLS.total - 1]) || 0,
+      prepayment: Number(row[BOOKING_COLS.prepayment - 1]) || 0,
+      status: String(row[BOOKING_COLS.status - 1] || '').trim() || BOOKING_STATUSES.planned
+    });
+  });
+
   return {
     success: true,
-    date: date,
-    bookings: [],
-    meta: { message: 'Bookings retrieval is not implemented yet' }
+    date: targetKey,
+    bookings: bookings
   };
 }
 

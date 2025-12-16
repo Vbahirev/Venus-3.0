@@ -263,6 +263,32 @@
       .sheet-item:last-child { border-bottom: none; }
       .sheet-item.selected { color: var(--accent); font-weight: 700; }
 
+      /* --- Боковой лист дня --- */
+      .booking-sheet-box { max-height: 70vh; }
+      .booking-sheet-header { align-items: flex-start; gap: 10px; }
+      .booking-sheet-titles { display: flex; flex-direction: column; gap: 4px; }
+      .booking-sheet-subtitle { color: var(--text-sub); font-size: 13px; font-weight: 600; }
+      .booking-sheet-content { display: flex; flex-direction: column; gap: 12px; }
+      .booking-empty { padding: 20px; text-align: center; color: var(--text-sub); font-weight: 600; }
+      .booking-card { background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: 10px; animation: fadeIn 0.25s ease; }
+      .booking-card-header { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+      .booking-title { font-size: 16px; font-weight: 800; color: var(--text-main); }
+      .booking-status { padding: 6px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+      .status-planned { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+      .status-done { background: color-mix(in srgb, var(--color-inc) 18%, transparent); color: var(--color-inc); }
+      .status-canceled { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+      .booking-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; font-size: 13px; color: var(--text-sub); font-weight: 700; }
+      .booking-meta span { display: inline-flex; align-items: center; gap: 6px; }
+      .booking-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      .booking-btn { flex: 1; min-width: 120px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--bg-panel); color: var(--text-main); font-weight: 700; cursor: pointer; transition: 0.2s; }
+      .booking-btn:active { transform: translateY(1px); opacity: 0.95; }
+      .booking-btn.edit { border-color: var(--accent); color: var(--accent); }
+      .booking-btn.done { border-color: var(--color-inc); color: var(--color-inc); }
+      .booking-btn.cancel { border-color: var(--danger); color: var(--danger); }
+
+      .calendar-cell.clickable { cursor: pointer; }
+      .calendar-cell.outside { pointer-events: none; }
+
       @keyframes popIn { to { transform: scale(1); } }
       @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
       @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -508,6 +534,21 @@
         </div>
     </div>
 
+    <div id="bookingSheet" class="sheet-overlay" onclick="handleBookingSheetBackdrop(event)">
+        <div class="sheet-box booking-sheet-box" id="bookingSheetBox">
+            <div class="sheet-header booking-sheet-header">
+                <div class="booking-sheet-titles">
+                    <span class="sheet-title" id="bookingSheetTitle">Дата</span>
+                    <span class="booking-sheet-subtitle" id="bookingSheetSubtitle">Загрузка...</span>
+                </div>
+                <span class="sheet-close" onclick="closeBookingSheet()">Закрыть</span>
+            </div>
+            <div id="bookingSheetContent" class="booking-sheet-content">
+                <div class="booking-empty">Нет мастер-классов</div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // 👇 ВСТАВЬ СЮДА ССЫЛКУ
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1i9SVb6DLaKhaEbvxoY4PHFgJxy44TIfAXt4qcrWALlWhNwmA_aodXF-L7kMH04PH/exec';
@@ -525,12 +566,24 @@
         let calendarMonth = new Date().getMonth();
         const calendarDataCache = {};
         const calendarRequests = {};
+        const bookingsCache = {};
+        const bookingRequests = {};
+        let activeBookingDate = null;
+        let bookingTouchStart = null;
 
         function formatDateKeyLocal(dateObj) {
             const y = dateObj.getFullYear();
             const m = String(dateObj.getMonth() + 1).padStart(2, '0');
             const d = String(dateObj.getDate()).padStart(2, '0');
             return `${y}-${m}-${d}`;
+        }
+
+        function formatHumanDate(dateStr) {
+            // YYYY-MM-DD → человекочитаемое «5 марта 2024»
+            if (!dateStr) return '';
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dateObj = new Date(y, (m || 1) - 1, d || 1);
+            return dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
         }
 
         function getCalendarCells(year, month) {
@@ -612,8 +665,17 @@
                 const dayData = dataByDate.get(c.iso);
                 const level = getBookingLevel(dayData?.totalBookings);
                 const levelAttr = level ? ` data-level="${level}"` : '';
-                return `<div class="calendar-cell ${c.inMonth ? '' : 'outside'}"${levelAttr}><span class="date-num">${c.day}</span></div>`;
+                const clickableClass = c.inMonth ? 'clickable' : 'outside';
+                const dataAttrs = c.inMonth ? ` data-date="${c.iso}"` : '';
+                return `<div class="calendar-cell ${clickableClass}"${levelAttr}${dataAttrs}><span class="date-num">${c.day}</span></div>`;
             }).join('');
+
+            const nodes = Array.from(grid.querySelectorAll('.calendar-cell'));
+            nodes.forEach((node, idx) => {
+                const cellData = cells[idx];
+                if (!cellData?.inMonth) return;
+                node.addEventListener('click', () => onCalendarDayClick(cellData));
+            });
         }
 
         function loadCalendarData() {
@@ -650,6 +712,128 @@
 
             return calendarRequests[key];
         }
+
+        function setBookingSubtitle(text) {
+            const subtitle = document.getElementById('bookingSheetSubtitle');
+            if (subtitle) subtitle.innerText = text;
+        }
+
+        function formatTimeRange(start, end) {
+            if (start && end) return `${start} — ${end}`;
+            return start || end || '—';
+        }
+
+        function renderBookingCards(dateIso, bookings = []) {
+            const content = document.getElementById('bookingSheetContent');
+            if (!content) return;
+            const total = bookings.length;
+            setBookingSubtitle(total ? `${total} МК на выбранную дату` : 'Нет мастер-классов');
+
+            if (!total) {
+                content.innerHTML = '<div class="booking-empty">Нет мастер-классов</div>';
+                return;
+            }
+
+            content.innerHTML = bookings.map(b => {
+                const statusClass = `status-${(b.status || 'planned')}`;
+                const timeText = formatTimeRange(b.startTime, b.endTime);
+                const qtyText = b.qty ? `${b.qty} чел.` : '—';
+                const totalText = b.total ? `${Number(b.total).toLocaleString()} ₽` : '—';
+
+                return `<div class="booking-card">
+                    <div class="booking-card-header">
+                        <div class="booking-title">${b.name || 'Без названия'}</div>
+                        <div class="booking-status ${statusClass}">${b.status || 'planned'}</div>
+                    </div>
+                    <div class="booking-meta">
+                        <span>🕒 ${timeText}</span>
+                        <span>👥 ${qtyText}</span>
+                        <span>💰 ${totalText}</span>
+                    </div>
+                    <div class="booking-card-actions">
+                        <button class="booking-btn edit" onclick="onBookingEdit('${b.id || ''}')">✏️ Редактировать</button>
+                        <button class="booking-btn done" onclick="onBookingMarkDone('${b.id || ''}')">✅ Отработан</button>
+                        <button class="booking-btn cancel" onclick="onBookingCancel('${b.id || ''}')">❌ Отмена</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function openBookingSheet(dateIso) {
+            const sheet = document.getElementById('bookingSheet');
+            const title = document.getElementById('bookingSheetTitle');
+            const content = document.getElementById('bookingSheetContent');
+
+            activeBookingDate = dateIso;
+            if (title) title.innerText = formatHumanDate(dateIso);
+            if (content) content.innerHTML = '<div class="booking-empty">Загружаем...</div>';
+            setBookingSubtitle('Подготавливаем список');
+            if (sheet) sheet.style.display = 'flex';
+        }
+
+        function closeBookingSheet() {
+            activeBookingDate = null;
+            const sheet = document.getElementById('bookingSheet');
+            if (sheet) sheet.style.display = 'none';
+        }
+
+        function handleBookingSheetBackdrop(e) {
+            if (e.target.id === 'bookingSheet') closeBookingSheet();
+        }
+
+        function initBookingSheetGestures() {
+            const sheetBox = document.getElementById('bookingSheetBox');
+            if (!sheetBox) return;
+
+            sheetBox.addEventListener('touchstart', e => { bookingTouchStart = e.touches[0].clientY; });
+            sheetBox.addEventListener('touchmove', e => {
+                if (bookingTouchStart === null) return;
+                const diff = e.touches[0].clientY - bookingTouchStart;
+                if (diff > 120) { closeBookingSheet(); bookingTouchStart = null; }
+            });
+            sheetBox.addEventListener('touchend', () => { bookingTouchStart = null; });
+        }
+
+        function fetchBookingsForDate(dateIso) {
+            if (!dateIso) return Promise.resolve([]);
+            if (bookingsCache[dateIso]) {
+                renderBookingCards(dateIso, bookingsCache[dateIso]);
+                return Promise.resolve(bookingsCache[dateIso]);
+            }
+            if (bookingRequests[dateIso]) return bookingRequests[dateIso];
+
+            bookingRequests[dateIso] = runBackend('getBookingsByDate', { date: dateIso })
+                .then(res => {
+                    delete bookingRequests[dateIso];
+                    if (res && res.success) {
+                        bookingsCache[dateIso] = res.bookings || [];
+                        if (activeBookingDate === dateIso) {
+                            renderBookingCards(dateIso, bookingsCache[dateIso]);
+                        }
+                    } else {
+                        setBookingSubtitle('Не удалось загрузить список');
+                        showToast('Ошибка загрузки дня', true);
+                    }
+                    return res;
+                })
+                .catch(err => {
+                    delete bookingRequests[dateIso];
+                    setBookingSubtitle('Не удалось загрузить список');
+                    showToast('Ошибка загрузки дня: ' + err, true);
+                });
+
+            return bookingRequests[dateIso];
+        }
+
+        function onCalendarDayClick(cellData) {
+            if (!cellData || !cellData.inMonth) return;
+            openBookingSheet(cellData.iso);
+            fetchBookingsForDate(cellData.iso);
+        }
+
+        function onBookingEdit(id) { console.log('edit booking', id); }
+        function onBookingMarkDone(id) { console.log('mark done booking', id); }
+        function onBookingCancel(id) { console.log('cancel booking', id); }
 
         function refreshCalendarPeriod() {
             // Переотрисовываем сетку сразу, а данные подмешиваем после загрузки
@@ -752,6 +936,7 @@
                     else if(action === 'deleteTransaction') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).deleteTransaction(payload);
                     else if(action === 'getAnalyticsData') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAnalyticsData(payload.year, payload.monthIdx);
                     else if(action === 'getCalendarData') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getCalendarData(payload.year, payload.month);
+                    else if(action === 'getBookingsByDate') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBookingsByDate(payload.date);
                     else reject("Unknown Func");
                 });
             } else {
@@ -790,6 +975,7 @@
             v.addEventListener('animationiteration', () => { if (stopAnimationRequest) { v.classList.remove('spinning'); stopAnimationRequest = false; } });
             calcTotal();
             renderCalendar(calendarDataCache[getCalendarKey()] || []);
+            initBookingSheetGestures();
         };
 
         function setLoading(active) {
