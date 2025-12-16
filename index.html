@@ -271,6 +271,9 @@
       .booking-sheet-content { display: flex; flex-direction: column; gap: 12px; }
       .booking-empty { padding: 20px; text-align: center; color: var(--text-sub); font-weight: 600; }
       .booking-card { background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: 10px; animation: fadeIn 0.25s ease; }
+      .booking-card.status-done { border-color: color-mix(in srgb, var(--color-inc) 55%, var(--border)); background: color-mix(in srgb, var(--color-inc) 6%, var(--input-bg)); }
+      .booking-card.status-canceled { border-color: color-mix(in srgb, var(--danger) 55%, var(--border)); background: color-mix(in srgb, var(--danger) 6%, var(--input-bg)); }
+      .booking-card.is-loading { opacity: 0.7; }
       .booking-card-header { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
       .booking-title { font-size: 16px; font-weight: 800; color: var(--text-main); }
       .booking-status { padding: 6px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
@@ -282,6 +285,7 @@
       .booking-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
       .booking-btn { flex: 1; min-width: 120px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--bg-panel); color: var(--text-main); font-weight: 700; cursor: pointer; transition: 0.2s; }
       .booking-btn:active { transform: translateY(1px); opacity: 0.95; }
+      .booking-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
       .booking-btn.edit { border-color: var(--accent); color: var(--accent); }
       .booking-btn.done { border-color: var(--color-inc); color: var(--color-inc); }
       .booking-btn.cancel { border-color: var(--danger); color: var(--danger); }
@@ -642,6 +646,7 @@
         const bookingRequests = {};
         let activeBookingDate = null;
         let bookingTouchStart = null;
+        const BOOKING_STATUS = { planned: 'planned', done: 'done', canceled: 'canceled' };
         const bookingFormState = {
             isOpen: false,
             isSubmitting: false,
@@ -973,6 +978,42 @@
             return start || end || '—';
         }
 
+        function getBookingStatusLabel(status) {
+            const map = {
+                [BOOKING_STATUS.planned]: 'Запланировано',
+                [BOOKING_STATUS.done]: 'Отработан',
+                [BOOKING_STATUS.canceled]: 'Отменён'
+            };
+            return map[status] || status || BOOKING_STATUS.planned;
+        }
+
+        function isFinalBookingStatus(status) {
+            return status === BOOKING_STATUS.done || status === BOOKING_STATUS.canceled;
+        }
+
+        function lockBookingCard(id, isLoading, loadingText = '') {
+            const card = document.querySelector(`.booking-card[data-booking-id="${id}"]`);
+            if (!card) return;
+
+            card.classList.toggle('is-loading', Boolean(isLoading));
+            const buttons = card.querySelectorAll('.booking-btn');
+
+            buttons.forEach(btn => {
+                if (isLoading) {
+                    if (!btn.dataset.prevText) btn.dataset.prevText = btn.innerText;
+                    if (loadingText) btn.innerText = loadingText;
+                    btn.disabled = true;
+                } else {
+                    const locked = card.dataset.status !== BOOKING_STATUS.planned || btn.dataset.locked === '1';
+                    btn.disabled = locked;
+                    if (btn.dataset.prevText) {
+                        btn.innerText = btn.dataset.prevText;
+                        delete btn.dataset.prevText;
+                    }
+                }
+            });
+        }
+
         function renderBookingCards(dateIso, bookings = []) {
             const content = document.getElementById('bookingSheetContent');
             if (!content) return;
@@ -985,15 +1026,19 @@
             }
 
             content.innerHTML = bookings.map(b => {
-                const statusClass = `status-${(b.status || 'planned')}`;
+                const status = b.status || BOOKING_STATUS.planned;
+                const statusClass = `status-${status}`;
                 const timeText = formatTimeRange(b.startTime, b.endTime);
                 const qtyText = b.qty ? `${b.qty} чел.` : '—';
                 const totalText = b.total ? `${Number(b.total).toLocaleString()} ₽` : '—';
+                const isFinal = isFinalBookingStatus(status);
+                const lockedAttr = isFinal ? 'disabled data-locked="1"' : '';
+                const cardClasses = `booking-card ${statusClass} ${isFinal ? 'is-final' : ''}`;
 
-                return `<div class="booking-card">
+                return `<div class="${cardClasses}" data-booking-id="${b.id || ''}" data-status="${status}">
                     <div class="booking-card-header">
                         <div class="booking-title">${b.name || 'Без названия'}</div>
-                        <div class="booking-status ${statusClass}">${b.status || 'planned'}</div>
+                        <div class="booking-status ${statusClass}">${getBookingStatusLabel(status)}</div>
                     </div>
                     <div class="booking-meta">
                         <span>🕒 ${timeText}</span>
@@ -1001,9 +1046,9 @@
                         <span>💰 ${totalText}</span>
                     </div>
                     <div class="booking-card-actions">
-                        <button class="booking-btn edit" onclick="onBookingEdit('${b.id || ''}')">✏️ Редактировать</button>
-                        <button class="booking-btn done" onclick="onBookingMarkDone('${b.id || ''}')">✅ Отработан</button>
-                        <button class="booking-btn cancel" onclick="onBookingCancel('${b.id || ''}')">❌ Отмена</button>
+                        <button class="booking-btn edit" ${lockedAttr} onclick="onBookingEdit('${b.id || ''}')">✏️ Редактировать</button>
+                        <button class="booking-btn done" ${lockedAttr} onclick="onBookingMarkDone('${b.id || ''}')">✅ Отработан</button>
+                        <button class="booking-btn cancel" ${lockedAttr} onclick="onBookingCancel('${b.id || ''}')">❌ Отмена</button>
                     </div>
                 </div>`;
             }).join('');
@@ -1075,6 +1120,25 @@
             return bookingRequests[dateIso];
         }
 
+        function refreshBookingsAfterStatus(dateIso) {
+            if (!dateIso) return;
+            delete bookingsCache[dateIso];
+            fetchBookingsForDate(dateIso);
+            invalidateCalendarCache(dateIso);
+        }
+
+        function invalidateCalendarCache(dateIso) {
+            const parts = String(dateIso || '').split('-').map(Number);
+            if (parts.length < 2) return;
+            const [y, m] = parts;
+            if (!y || !m) return;
+            const key = getCalendarKey(y, m - 1);
+            delete calendarDataCache[key];
+            if (getCalendarKey() === key) {
+                loadCalendarData();
+            }
+        }
+
         function onCalendarDayClick(cellData) {
             if (!cellData || !cellData.inMonth) return;
             openBookingSheet(cellData.iso);
@@ -1082,8 +1146,37 @@
         }
 
         function onBookingEdit(id) { console.log('edit booking', id); }
-        function onBookingMarkDone(id) { console.log('mark done booking', id); }
-        function onBookingCancel(id) { console.log('cancel booking', id); }
+        function onBookingMarkDone(id) { changeBookingStatusUI(id, BOOKING_STATUS.done); }
+        function onBookingCancel(id) { changeBookingStatusUI(id, BOOKING_STATUS.canceled); }
+
+        function changeBookingStatusUI(id, status) {
+            if (!id) return;
+            const dateIso = activeBookingDate;
+            const dayBookings = bookingsCache[dateIso] || [];
+            const target = dayBookings.find(b => b.id === id);
+
+            if (target && isFinalBookingStatus(target.status)) {
+                showToast('Статус уже обновлён');
+                return;
+            }
+
+            lockBookingCard(id, true, 'Обновляем...');
+
+            runBackend('changeBookingStatus', { id, status })
+                .then(res => {
+                    if (res && res.success) {
+                        showToast('Статус обновлён');
+                        refreshBookingsAfterStatus(dateIso);
+                    } else {
+                        lockBookingCard(id, false);
+                        showToast((res && res.message) || 'Не удалось изменить статус', true);
+                    }
+                })
+                .catch(err => {
+                    lockBookingCard(id, false);
+                    showToast('Ошибка статуса: ' + err, true);
+                });
+        }
 
         function refreshCalendarPeriod() {
             // Переотрисовываем сетку сразу, а данные подмешиваем после загрузки
@@ -1188,6 +1281,7 @@
                     else if(action === 'getCalendarData') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getCalendarData(payload.year, payload.month);
                     else if(action === 'getBookingsByDate') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBookingsByDate(payload.date);
                     else if(action === 'addBooking') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).addBooking(payload);
+                    else if(action === 'changeBookingStatus') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).changeBookingStatus(payload.id, payload.status);
                     else reject("Unknown Func");
                 });
             } else {
