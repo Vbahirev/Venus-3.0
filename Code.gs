@@ -478,6 +478,7 @@ function getBookingsByDate(date) {
     bookings.push({
       id: row[BOOKING_COLS.id - 1],
       name: row[BOOKING_COLS.title - 1],
+      date: targetKey,
       startTime: (startTimeCell instanceof Date) ? Utilities.formatDate(startTimeCell, timezone, 'HH:mm') : '',
       endTime: (endTimeCell instanceof Date) ? Utilities.formatDate(endTimeCell, timezone, 'HH:mm') : '',
       qty: Number(row[BOOKING_COLS.participants - 1]) || 0,
@@ -553,12 +554,85 @@ function addBooking(data) {
 }
 
 function updateBooking(id, data) {
-  ensureBookingSheet();
+  const bookingSheet = ensureBookingSheet();
+  const timezone = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+  const lastRow = bookingSheet.getLastRow();
+
+  if (!id || lastRow < 2) {
+    return { success: false, message: 'Booking not found', id: id };
+  }
+
+  const values = bookingSheet.getRange(2, 1, lastRow - 1, BOOKING_HEADERS.length).getValues();
+  let targetIndex = -1;
+  let rowData = null;
+
+  values.some((row, idx) => {
+    if (String(row[BOOKING_COLS.id - 1]) === String(id)) {
+      targetIndex = idx;
+      rowData = row;
+      return true;
+    }
+    return false;
+  });
+
+  if (targetIndex === -1 || !rowData) {
+    return { success: false, message: 'Booking not found', id: id };
+  }
+
+  const currentStatus = String(rowData[BOOKING_COLS.status - 1] || '').trim() || BOOKING_STATUSES.planned;
+  // Бизнес-ограничение: финальные статусы нельзя редактировать, чтобы не нарушить аналитику и доходы
+  if (currentStatus === BOOKING_STATUSES.done || currentStatus === BOOKING_STATUSES.canceled) {
+    return { success: false, message: 'Booking already processed', id: id, status: currentStatus };
+  }
+
+  const dateStr = data.date;
+  const dateObj = dateStr ? new Date(dateStr) : null;
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+    return { success: false, message: 'Invalid booking date', id: id };
+  }
+
+  const parseTime = (timeStr) => {
+    if (!timeStr) return null;
+    const parsed = new Date(`${dateStr}T${timeStr}:00`);
+    return (parsed instanceof Date && !isNaN(parsed.getTime())) ? parsed : null;
+  };
+
+  const startTime = parseTime(data.startTime);
+  const endTime = parseTime(data.endTime);
+  const price = Number(data.price) || 0;
+  const participants = Number(data.participants) || 0;
+  const prepayment = Number(data.prepayment) || 0;
+  const total = price * participants;
+
+  const updatedRow = rowData.slice();
+  updatedRow[BOOKING_COLS.date - 1] = dateObj;
+  updatedRow[BOOKING_COLS.startTime - 1] = startTime;
+  updatedRow[BOOKING_COLS.endTime - 1] = endTime;
+  updatedRow[BOOKING_COLS.title - 1] = data.name || '';
+  updatedRow[BOOKING_COLS.price - 1] = price;
+  updatedRow[BOOKING_COLS.participants - 1] = participants;
+  updatedRow[BOOKING_COLS.total - 1] = total;
+  updatedRow[BOOKING_COLS.prepayment - 1] = prepayment;
+  updatedRow[BOOKING_COLS.status - 1] = currentStatus; // защитимся от изменения статуса через update
+
+  const targetRowNumber = targetIndex + 2; // сдвиг из-за заголовка
+  bookingSheet.getRange(targetRowNumber, 1, 1, BOOKING_HEADERS.length).setValues([updatedRow]);
+
   return {
-    success: false,
-    message: 'updateBooking is not implemented yet',
-    id: id,
-    payload: data
+    success: true,
+    message: 'Booking updated',
+    booking: {
+      id: id,
+      status: currentStatus,
+      name: data.name || '',
+      qty: participants,
+      price: price,
+      total: total,
+      prepayment: prepayment,
+      startTime: startTime ? Utilities.formatDate(startTime, timezone, 'HH:mm') : '',
+      endTime: endTime ? Utilities.formatDate(endTime, timezone, 'HH:mm') : '',
+      date: Utilities.formatDate(dateObj, timezone, 'yyyy-MM-dd')
+    }
   };
 }
 
