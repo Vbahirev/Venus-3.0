@@ -14,6 +14,20 @@ const EXPENSE_SHEET = 'Расходные материалы';
 const REF_SHEET = 'Справочник';
 const BOOKING_SHEET = 'Календарь_Брони';
 
+const ACTIONS = {
+  getInitialConfig: 'getInitialConfig',
+  saveTransaction: 'saveTransaction',
+  getTableData: 'getTableData',
+  editTransaction: 'editTransaction',
+  deleteTransaction: 'deleteTransaction',
+  getAnalyticsData: 'getAnalyticsData',
+  getCalendarData: 'getCalendarData',
+  getBookingsByDate: 'getBookingsByDate',
+  addBooking: 'addBooking',
+  updateBooking: 'updateBooking',
+  changeBookingStatus: 'changeBookingStatus'
+};
+
 const BOOKING_HEADERS = [
   'ID',
   'Дата',
@@ -81,17 +95,17 @@ function doPost(e) {
     Logger.log('[doPost] action=%s payload=%s', action, JSON.stringify(data));
     let result;
 
-    if (action === 'getInitialConfig') result = getInitialConfig();
-    else if (action === 'saveTransaction') result = saveTransaction(data);
-    else if (action === 'getTableData') result = getTableData(data.type);
-    else if (action === 'editTransaction') result = editTransaction(data);
-    else if (action === 'deleteTransaction') result = deleteTransaction(data);
-    else if (action === 'getAnalyticsData') result = getAnalyticsData(data.year, data.monthIdx);
-    else if (action === 'getCalendarData') result = getCalendarData(data.year, data.month);
-    else if (action === 'getBookingsByDate') result = getBookingsByDate(data.date);
-    else if (action === 'addBooking') result = addBooking(data);
-    else if (action === 'updateBooking') result = updateBooking(data.id, data);
-    else if (action === 'changeBookingStatus') result = changeBookingStatus(data.id, data.status);
+    if (action === ACTIONS.getInitialConfig) result = getInitialConfig();
+    else if (action === ACTIONS.saveTransaction) result = saveTransaction(data);
+    else if (action === ACTIONS.getTableData) result = getTableData(data.type);
+    else if (action === ACTIONS.editTransaction) result = editTransaction(data);
+    else if (action === ACTIONS.deleteTransaction) result = deleteTransaction(data);
+    else if (action === ACTIONS.getAnalyticsData) result = getAnalyticsData(data.year, data.monthIdx);
+    else if (action === ACTIONS.getCalendarData) result = getCalendarData(data.year, data.month);
+    else if (action === ACTIONS.getBookingsByDate) result = getBookingsByDate(data.date);
+    else if (action === ACTIONS.addBooking) result = addBooking(data);
+    else if (action === ACTIONS.updateBooking) result = updateBooking(data.id, data);
+    else if (action === ACTIONS.changeBookingStatus) result = changeBookingStatus(data.id, data.status);
     else throw new Error("Unknown action: " + action);
 
     if (!result || typeof result !== 'object' || typeof result.success === 'undefined') {
@@ -104,6 +118,14 @@ function doPost(e) {
     Logger.log('[doPost][error] %s', err);
     return ContentService.createTextOutput(JSON.stringify({ success: false, message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function ok(payload) {
+  return Object.assign({ success: true }, payload || {});
+}
+
+function fail(message, extra) {
+  return Object.assign({ success: false, message: String(message) }, extra || {});
 }
 
 // =========================================
@@ -134,12 +156,12 @@ function getInitialConfig() {
         dates.forEach(r => { if(r[0] instanceof Date) years.add(r[0].getFullYear()); });
      }
   });
-  return {
+  return ok({
     incomeItems: incomeItems,
     expenseItems: expenseItems,
     years: Array.from(years).sort((a,b)=>b-a),
     months: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
-  };
+  });
 }
 
 function saveTransaction(data) {
@@ -206,7 +228,7 @@ function getTableData(type) {
       total: r[4]
     });
   }
-  return result;
+  return ok({ rows: result });
 }
 
 function editTransaction(data) {
@@ -350,7 +372,7 @@ function getAnalyticsData(year, monthIdx) {
   res.pieExpense.labels = sortedExp.map(x => x[0]);
   res.pieExpense.data = sortedExp.map(x => x[1]);
 
-  return res;
+  return ok({ data: res });
 }
 
 // =========================================
