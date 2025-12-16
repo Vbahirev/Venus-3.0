@@ -860,12 +860,14 @@
                         const datesToRefresh = new Set([previousDate, newDate]);
                         datesToRefresh.forEach(d => refreshBookingData(d));
                     } else {
+                        console.error('[bookingForm] Failed response', res);
                         showToast(res?.message || 'Не удалось сохранить', true);
                         syncBookingFormUI(validation);
                     }
                 })
                 .catch(err => {
                     bookingFormState.isSubmitting = false;
+                    console.error('[bookingForm] Submit error', err);
                     showToast('Ошибка сохранения: ' + err, true);
                     syncBookingFormUI(validation);
                 });
@@ -1137,6 +1139,7 @@
                         }
                     } else {
                         setBookingSubtitle('Не удалось загрузить список');
+                        console.error('[fetchBookingsForDate] Failed response', res);
                         showToast('Ошибка загрузки дня', true);
                     }
                     return res;
@@ -1144,6 +1147,7 @@
                 .catch(err => {
                     delete bookingRequests[dateIso];
                     setBookingSubtitle('Не удалось загрузить список');
+                    console.error('[fetchBookingsForDate] Request error', err);
                     showToast('Ошибка загрузки дня: ' + err, true);
                 });
 
@@ -1238,11 +1242,13 @@
                         refreshBookingsAfterStatus(dateIso);
                     } else {
                         lockBookingCard(id, false);
+                        console.error('[changeBookingStatusUI] Failed response', res);
                         showToast((res && res.message) || 'Не удалось изменить статус', true);
                     }
                 })
                 .catch(err => {
                     lockBookingCard(id, false);
+                    console.error('[changeBookingStatusUI] Request error', err);
                     showToast('Ошибка статуса: ' + err, true);
                 });
         }
