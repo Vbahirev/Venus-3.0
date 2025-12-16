@@ -375,12 +375,55 @@ function isValidBookingStatus(status) {
 }
 
 function getCalendarData(year, month) {
-  ensureBookingSheet();
+  const sheet = ensureBookingSheet();
+  const lastRow = sheet.getLastRow();
+  const daysMap = {};
+
+  if (lastRow < 2) {
+    return { success: true, filters: { year: year, month: month }, days: [] };
+  }
+
+  const timezone = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+  const targetYear = parseInt(year, 10);
+  const targetMonth = parseInt(month, 10);
+  const data = sheet.getRange(2, 1, lastRow - 1, BOOKING_HEADERS.length).getValues();
+
+  data.forEach(row => {
+    const dateCell = row[BOOKING_COLS.date - 1];
+    const status = String(row[BOOKING_COLS.status - 1] || '').trim();
+
+    if (!(dateCell instanceof Date)) return;
+
+    // Используем часовой пояс таблицы, чтобы не смещать дату при агрегации
+    const dateYear = parseInt(Utilities.formatDate(dateCell, timezone, 'yyyy'), 10);
+    const dateMonth = parseInt(Utilities.formatDate(dateCell, timezone, 'M'), 10) - 1;
+    if (dateYear !== targetYear || dateMonth !== targetMonth) return;
+
+    const dateKey = Utilities.formatDate(dateCell, timezone, 'yyyy-MM-dd');
+    if (!daysMap[dateKey]) {
+      daysMap[dateKey] = {
+        date: dateKey,
+        totalBookings: 0,
+        statusSummary: {
+          planned: 0,
+          done: 0,
+          canceled: 0
+        }
+      };
+    }
+
+    daysMap[dateKey].totalBookings += 1;
+    if (isValidBookingStatus(status)) {
+      daysMap[dateKey].statusSummary[status] += 1;
+    }
+  });
+
+  const days = Object.values(daysMap).sort((a, b) => a.date.localeCompare(b.date));
+
   return {
     success: true,
-    filters: { year: year, month: month },
-    bookings: [],
-    meta: { message: 'Calendar data is not implemented yet' }
+    filters: { year: targetYear, month: targetMonth },
+    days: days
   };
 }
 
