@@ -848,27 +848,19 @@
             const action = isEdit ? 'updateBooking' : 'addBooking';
             if (isEdit) payload.id = bookingFormState.bookingId;
 
-            runBackend(action, payload)
-                .then(res => {
+            safeBackendCall(action, payload)
+                .then(() => {
                     bookingFormState.isSubmitting = false;
-                    if (res && res.success) {
-                        showToast(isEdit ? 'Изменения сохранены' : 'Бронь добавлена');
-                        const newDate = payload.date;
-                        const previousDate = bookingFormState.originalDate || newDate;
-                        closeAddBookingForm();
-                        // Обновляем оба дня, если дата перенесена
-                        const datesToRefresh = new Set([previousDate, newDate]);
-                        datesToRefresh.forEach(d => refreshBookingData(d));
-                    } else {
-                        console.error('[bookingForm] Failed response', res);
-                        showToast(res?.message || 'Не удалось сохранить', true);
-                        syncBookingFormUI(validation);
-                    }
+                    showToast(isEdit ? 'Изменения сохранены' : 'Бронь добавлена');
+                    const newDate = payload.date;
+                    const previousDate = bookingFormState.originalDate || newDate;
+                    closeAddBookingForm();
+                    // Обновляем оба дня, если дата перенесена
+                    const datesToRefresh = new Set([previousDate, newDate]);
+                    datesToRefresh.forEach(d => refreshBookingData(d));
                 })
-                .catch(err => {
+                .catch(() => {
                     bookingFormState.isSubmitting = false;
-                    console.error('[bookingForm] Submit error', err);
-                    showToast('Ошибка сохранения: ' + err, true);
                     syncBookingFormUI(validation);
                 });
         }
@@ -977,24 +969,19 @@
             if (calendarRequests[key]) return calendarRequests[key];
 
             setCalendarLoading(true);
-            calendarRequests[key] = runBackend('getCalendarData', { year: targetYear, month: targetMonth })
+            calendarRequests[key] = safeBackendCall('getCalendarData', { year: targetYear, month: targetMonth })
                 .then(res => {
                     setCalendarLoading(false);
                     delete calendarRequests[key];
-                    if (res && res.success) {
-                        calendarDataCache[key] = res.days || [];
-                        if (getCalendarKey() === key) {
-                            renderCalendar(calendarDataCache[key]);
-                        }
-                    } else {
-                        showToast('Не удалось загрузить календарь', true);
+                    calendarDataCache[key] = res.days || [];
+                    if (getCalendarKey() === key) {
+                        renderCalendar(calendarDataCache[key]);
                     }
                     return res;
                 })
-                .catch(err => {
+                .catch(() => {
                     setCalendarLoading(false);
                     delete calendarRequests[key];
-                    showToast('Ошибка календаря: ' + err, true);
                 });
 
             return calendarRequests[key];
@@ -1129,26 +1116,18 @@
             }
             if (bookingRequests[dateIso]) return bookingRequests[dateIso];
 
-            bookingRequests[dateIso] = runBackend('getBookingsByDate', { date: dateIso })
+            bookingRequests[dateIso] = safeBackendCall('getBookingsByDate', { date: dateIso })
                 .then(res => {
                     delete bookingRequests[dateIso];
-                    if (res && res.success) {
-                        bookingsCache[dateIso] = res.bookings || [];
-                        if (activeBookingDate === dateIso) {
-                            renderBookingCards(dateIso, bookingsCache[dateIso]);
-                        }
-                    } else {
-                        setBookingSubtitle('Не удалось загрузить список');
-                        console.error('[fetchBookingsForDate] Failed response', res);
-                        showToast('Ошибка загрузки дня', true);
+                    bookingsCache[dateIso] = res.bookings || [];
+                    if (activeBookingDate === dateIso) {
+                        renderBookingCards(dateIso, bookingsCache[dateIso]);
                     }
                     return res;
                 })
-                .catch(err => {
+                .catch(() => {
                     delete bookingRequests[dateIso];
                     setBookingSubtitle('Не удалось загрузить список');
-                    console.error('[fetchBookingsForDate] Request error', err);
-                    showToast('Ошибка загрузки дня: ' + err, true);
                 });
 
             return bookingRequests[dateIso];
@@ -1235,21 +1214,13 @@
 
             lockBookingCard(id, true, 'Обновляем...');
 
-            runBackend('changeBookingStatus', { id, status })
-                .then(res => {
-                    if (res && res.success) {
-                        showToast('Статус обновлён');
-                        refreshBookingsAfterStatus(dateIso);
-                    } else {
-                        lockBookingCard(id, false);
-                        console.error('[changeBookingStatusUI] Failed response', res);
-                        showToast((res && res.message) || 'Не удалось изменить статус', true);
-                    }
+            safeBackendCall('changeBookingStatus', { id, status })
+                .then(() => {
+                    showToast('Статус обновлён');
+                    refreshBookingsAfterStatus(dateIso);
                 })
-                .catch(err => {
+                .catch(() => {
                     lockBookingCard(id, false);
-                    console.error('[changeBookingStatusUI] Request error', err);
-                    showToast('Ошибка статуса: ' + err, true);
                 });
         }
 
@@ -1375,23 +1346,36 @@
             }
         }
 
+        async function safeBackendCall(action, payload = {}) {
+            try {
+                const res = await runBackend(action, payload);
+                if (!res || res.success === false) {
+                    console.error(`[${action}] backend error`, res);
+                    showToast((res && res.message) ? res.message : 'Ошибка запроса', true);
+                    throw new Error((res && res.message) || 'Backend error');
+                }
+                return res;
+            } catch (err) {
+                console.error(`[${action}] request failed`, err);
+                showToast('Ошибка: ' + (err.message || err), true);
+                throw err;
+            }
+        }
+
         window.onload = function() {
             if(window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.expand();
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.body.setAttribute('data-theme', savedTheme);
             setLoading(true);
             
-            runBackend('getInitialConfig').then(res => {
+            safeBackendCall('getInitialConfig').then(res => {
                 config = res;
                 availableYears = res.years;
                 updateFilterUI();
                 refreshTable(true);
                 loadAnalytics(true);
                 setLoading(false);
-            }).catch(e => {
-                showToast("Error: " + e, true);
-                setLoading(false);
-            });
+            }).catch(() => { setLoading(false); });
             const v = document.getElementById('venus');
             v.addEventListener('animationiteration', () => { if (stopAnimationRequest) { v.classList.remove('spinning'); stopAnimationRequest = false; } });
             calcTotal();
@@ -1566,9 +1550,10 @@
             const tbody = document.getElementById('tableBody'), msg = document.getElementById('emptyMsg');
             setLoading(true);
             if (!isSilent) { tbody.innerHTML = ''; msg.style.display = 'block'; msg.innerText = 'Загрузка...'; }
-            runBackend('getTableData', {type: currTab}).then(data => {
-                dataCache[currTab] = data; setLoading(false); renderTableFromCache(data); 
-            });
+            safeBackendCall('getTableData', {type: currTab}).then(data => {
+                const rows = data.rows || [];
+                dataCache[currTab] = rows; setLoading(false); renderTableFromCache(rows);
+            }).catch(() => { setLoading(false); });
         }
 
         function submitEntry() {
@@ -1590,10 +1575,13 @@
             tbody.insertAdjacentHTML('afterbegin', `<tr id="${tempId}" style="background: rgba(var(--accent), 0.05);"><td style="color:var(--text-sub);">${shortDate}</td><td style="font-weight:600;">${name}</td><td style="font-weight:700;">${total.toLocaleString()}</td><td class="action-cell" style="text-align:right;"><span style="font-size:12px; color:var(--text-sub);">...</span></td></tr>`);
             document.getElementById('inpName').value = ''; document.getElementById('inpPrice').value = ''; document.getElementById('inpQty').value = 1; calcTotal();
             const btn = document.getElementById('btnAdd'); btn.disabled = true; setLoading(true);
-            runBackend('saveTransaction', payload).then(res => {
+            safeBackendCall('saveTransaction', payload).then(() => {
                 btn.disabled = false; setLoading(false);
-                if(res.success) { showToast('Успешно добавлено'); refreshTable(true, true); analyticsNeedsRefresh = true; loadAnalytics(true); } 
-                else { const tempEl = document.getElementById(tempId); if(tempEl) tempEl.remove(); showToast(res.message, true); document.getElementById('inpName').value = name; document.getElementById('inpPrice').value = price; }
+                showToast('Успешно добавлено'); refreshTable(true, true); analyticsNeedsRefresh = true; loadAnalytics(true);
+            }).catch(() => {
+                btn.disabled = false; setLoading(false);
+                const tempEl = document.getElementById(tempId); if(tempEl) tempEl.remove();
+                document.getElementById('inpName').value = name; document.getElementById('inpPrice').value = price;
             });
         }
 
@@ -1614,10 +1602,10 @@
                 setTimeout(() => row.style.background = 'transparent', 1000);
             }
             setLoading(true);
-            runBackend('editTransaction', payload).then(res => {
+            safeBackendCall('editTransaction', payload).then(() => {
                 setLoading(false);
-                if(res.success) { showToast('Сохранено'); refreshTable(true, true); analyticsNeedsRefresh = true; loadAnalytics(true); } else { showToast(res.message, true); refreshTable(true, false); }
-            });
+                showToast('Сохранено'); refreshTable(true, true); analyticsNeedsRefresh = true; loadAnalytics(true);
+            }).catch(() => { setLoading(false); refreshTable(true, false); });
         }
         function openDelete(row) { deleteTargetId = row.rowId; document.getElementById('deleteModal').style.display = 'flex'; }
         function confirmDelete() {
@@ -1627,22 +1615,23 @@
             if (rowElement) { rowElement.style.transition = 'opacity 0.3s'; rowElement.style.opacity = '0';
             setTimeout(() => { if(rowElement) rowElement.remove(); }, 300); }
             setLoading(true);
-            runBackend('deleteTransaction', {rowId: deleteTargetId, type: currTab}).then(res => {
+            safeBackendCall('deleteTransaction', {rowId: deleteTargetId, type: currTab}).then(() => {
                 setLoading(false);
-                if(res.success) { showToast('Удалено'); refreshTable(true, true); analyticsNeedsRefresh = true; loadAnalytics(true); } else { showToast(res.message, true); refreshTable(true, false); }
-            });
+                showToast('Удалено'); refreshTable(true, true); analyticsNeedsRefresh = true; loadAnalytics(true);
+            }).catch(() => { setLoading(false); refreshTable(true, false); });
         }
 
         function loadAnalytics(isSilent = false) {
             setLoading(true);
-            runBackend('getAnalyticsData', {year: selYear, monthIdx: selMonth}).then(d => {
+            safeBackendCall('getAnalyticsData', {year: selYear, monthIdx: selMonth}).then(res => {
+                const d = res.data || res;
                 setLoading(false); isAnalyticsLoaded = true; analyticsNeedsRefresh = false;
                 renderKPI('kpiInc', d.current.income, d.growth.income, '₽', 'trend-up'); renderKPI('kpiExp', d.current.expense, d.growth.expense, '₽', 'trend-down'); renderKPI('kpiProf', d.current.profit, d.growth.profit, '₽', 'trend-up'); renderKPI('kpiVis', d.current.visitors, d.growth.visitors, 'чел', 'trend-up');
                 renderAreaChart('chartPulse', d.pulse.labels, [{ label:'Доход', data:d.pulse.income, borderColor:'#34C759', bg:'rgba(52, 199, 89, 0.1)' }, { label:'Расход', data:d.pulse.expense, borderColor:'#FF3B30', bg:'rgba(255, 59, 48, 0.1)' }]);
                 renderAreaChart('chartAttendance', d.attendance.labels, [{ label:'Посетители', data:d.attendance.data, borderColor:'#AF52DE', bg:'rgba(175, 82, 222, 0.1)' }]);
                 renderProgressList('listInc', d.pieIncome.labels, d.pieIncome.data, '#34C759');
                 renderProgressList('listExp', d.pieExpense.labels, d.pieExpense.data, '#FF3B30');
-            });
+            }).catch(() => { setLoading(false); });
         }
         function renderKPI(id, val, growth, suff, colorCls) {
             document.getElementById(id).innerText = val.toLocaleString() + ' ' + suff;
