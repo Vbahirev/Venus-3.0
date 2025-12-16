@@ -478,11 +478,59 @@ function getBookingsByDate(date) {
 }
 
 function addBooking(data) {
-  ensureBookingSheet();
+  const sheet = ensureBookingSheet();
+  const timezone = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+
+  const dateStr = data.date;
+  const dateObj = dateStr ? new Date(dateStr) : null;
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+    return { success: false, message: 'Invalid booking date' };
+  }
+
+  const parseTime = (timeStr) => {
+    if (!timeStr) return null;
+    const parsed = new Date(`${dateStr}T${timeStr}:00`);
+    return (parsed instanceof Date && !isNaN(parsed.getTime())) ? parsed : null;
+  };
+
+  const startTime = parseTime(data.startTime);
+  const endTime = parseTime(data.endTime);
+  const price = Number(data.price) || 0;
+  const participants = Number(data.participants) || 0;
+  const prepayment = Number(data.prepayment) || 0;
+  const total = price * participants;
+
+  const id = `BK-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const createdAt = new Date();
+
+  const row = [];
+  row[BOOKING_COLS.id - 1] = id;
+  row[BOOKING_COLS.date - 1] = dateObj;
+  row[BOOKING_COLS.startTime - 1] = startTime;
+  row[BOOKING_COLS.endTime - 1] = endTime;
+  row[BOOKING_COLS.title - 1] = data.name || '';
+  row[BOOKING_COLS.price - 1] = price;
+  row[BOOKING_COLS.participants - 1] = participants;
+  row[BOOKING_COLS.total - 1] = total;
+  row[BOOKING_COLS.prepayment - 1] = prepayment;
+  row[BOOKING_COLS.status - 1] = BOOKING_STATUSES.planned;
+  row[BOOKING_COLS.createdAt - 1] = createdAt;
+
+  sheet.appendRow(row);
+
   return {
-    success: false,
-    message: 'addBooking is not implemented yet',
-    payload: data
+    success: true,
+    booking: {
+      id: id,
+      name: data.name || '',
+      startTime: startTime ? Utilities.formatDate(startTime, timezone, 'HH:mm') : '',
+      endTime: endTime ? Utilities.formatDate(endTime, timezone, 'HH:mm') : '',
+      qty: participants,
+      price: price,
+      total: total,
+      prepayment: prepayment,
+      status: BOOKING_STATUSES.planned
+    }
   };
 }
 

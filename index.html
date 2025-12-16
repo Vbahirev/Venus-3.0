@@ -285,6 +285,15 @@
       .booking-btn.edit { border-color: var(--accent); color: var(--accent); }
       .booking-btn.done { border-color: var(--color-inc); color: var(--color-inc); }
       .booking-btn.cancel { border-color: var(--danger); color: var(--danger); }
+      .booking-add-btn { padding: 10px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border-strong)); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 800; cursor: pointer; transition: 0.2s; }
+      .booking-add-btn:active { transform: translateY(1px); opacity: 0.9; }
+      .booking-form-sheet { max-height: 80vh; }
+      .booking-form-grid { display: flex; flex-direction: column; gap: 12px; }
+      .booking-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .field-error { color: var(--danger); font-size: 12px; font-weight: 700; margin-top: 4px; min-height: 14px; }
+      .booking-total { font-size: 18px; font-weight: 800; margin-top: 4px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; background: var(--input-bg); padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border-strong); }
+      .btn.secondary { background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-strong); }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
       .calendar-cell.clickable { cursor: pointer; }
       .calendar-cell.outside { pointer-events: none; }
@@ -541,10 +550,73 @@
                     <span class="sheet-title" id="bookingSheetTitle">Дата</span>
                     <span class="booking-sheet-subtitle" id="bookingSheetSubtitle">Загрузка...</span>
                 </div>
-                <span class="sheet-close" onclick="closeBookingSheet()">Закрыть</span>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="booking-add-btn" onclick="openAddBookingForm(activeBookingDate)">＋ Добавить бронь</button>
+                    <span class="sheet-close" onclick="closeBookingSheet()">Закрыть</span>
+                </div>
             </div>
             <div id="bookingSheetContent" class="booking-sheet-content">
                 <div class="booking-empty">Нет мастер-классов</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addBookingSheet" class="sheet-overlay" onclick="handleAddBookingBackdrop(event)">
+        <div class="sheet-box booking-form-sheet" id="addBookingSheetBox">
+            <div class="sheet-header" style="align-items:center;">
+                <span class="sheet-title">Новая бронь</span>
+                <span class="sheet-close" onclick="closeAddBookingForm()">Отмена</span>
+            </div>
+            <div class="booking-form-grid">
+                <div>
+                    <label for="bookingTitle">Название мастер-класса</label>
+                    <input id="bookingTitle" type="text" placeholder="Например, Свечи" oninput="updateBookingFormField('name', this.value)">
+                    <div class="field-error" id="bookingErrorName"></div>
+                </div>
+                <div class="booking-form-row">
+                    <div>
+                        <label for="bookingDate">Дата</label>
+                        <input id="bookingDate" type="date" readonly>
+                        <div class="field-error" id="bookingErrorDate"></div>
+                    </div>
+                    <div>
+                        <label for="bookingStart">Время начала</label>
+                        <input id="bookingStart" type="time" oninput="updateBookingFormField('startTime', this.value)">
+                        <div class="field-error" id="bookingErrorStartTime"></div>
+                    </div>
+                </div>
+                <div class="booking-form-row">
+                    <div>
+                        <label for="bookingEnd">Время окончания</label>
+                        <input id="bookingEnd" type="time" oninput="updateBookingFormField('endTime', this.value)">
+                        <div class="field-error" id="bookingErrorEndTime"></div>
+                    </div>
+                    <div>
+                        <label for="bookingPrice">Цена за человека</label>
+                        <input id="bookingPrice" type="number" min="0" step="1" inputmode="decimal" oninput="updateBookingFormField('price', this.value)">
+                        <div class="field-error" id="bookingErrorPrice"></div>
+                    </div>
+                </div>
+                <div class="booking-form-row">
+                    <div>
+                        <label for="bookingQty">Количество людей</label>
+                        <input id="bookingQty" type="number" min="1" step="1" inputmode="numeric" oninput="updateBookingFormField('qty', this.value)">
+                        <div class="field-error" id="bookingErrorQty"></div>
+                    </div>
+                    <div>
+                        <label for="bookingPrepayment">Предоплата (опционально)</label>
+                        <input id="bookingPrepayment" type="number" min="0" step="1" inputmode="decimal" oninput="updateBookingFormField('prepayment', this.value)">
+                        <div class="field-error" id="bookingErrorPrepayment"></div>
+                    </div>
+                </div>
+                <div class="booking-total">
+                    <span>Сумма</span>
+                    <span id="bookingTotalText">0 ₽</span>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button id="bookingFormSubmit" class="btn" onclick="submitBookingForm()">Сохранить бронь</button>
+                    <button class="btn secondary" onclick="closeAddBookingForm()">Закрыть</button>
+                </div>
             </div>
         </div>
     </div>
@@ -570,6 +642,13 @@
         const bookingRequests = {};
         let activeBookingDate = null;
         let bookingTouchStart = null;
+        const bookingFormState = {
+            isOpen: false,
+            isSubmitting: false,
+            fields: { name: '', date: '', startTime: '', endTime: '', price: '', qty: '1', prepayment: '' },
+            errors: {},
+            total: 0
+        };
 
         function formatDateKeyLocal(dateObj) {
             const y = dateObj.getFullYear();
@@ -584,6 +663,177 @@
             const [y, m, d] = dateStr.split('-').map(Number);
             const dateObj = new Date(y, (m || 1) - 1, d || 1);
             return dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        function convertTimeToMinutes(timeStr) {
+            if (!timeStr) return null;
+            const [h, m] = timeStr.split(':').map(Number);
+            if (isNaN(h) || isNaN(m)) return null;
+            return h * 60 + m;
+        }
+
+        function validateBookingForm(fields) {
+            const errors = {};
+            const price = Number(fields.price);
+            const qty = Number(fields.qty);
+            const prepaymentVal = fields.prepayment === '' ? null : Number(fields.prepayment);
+            const startMinutes = convertTimeToMinutes(fields.startTime);
+            const endMinutes = convertTimeToMinutes(fields.endTime);
+
+            if (!fields.date) errors.date = 'Выберите дату';
+            if (!isNaN(price) && price < 0) errors.price = 'Цена не может быть отрицательной';
+            if (isNaN(price)) errors.price = 'Введите цену';
+            if (isNaN(qty) || qty < 1) errors.qty = 'Минимум 1 человек';
+            if (startMinutes !== null && endMinutes !== null && startMinutes >= endMinutes) {
+                errors.endTime = 'Окончание позже старта';
+            }
+            if (prepaymentVal !== null) {
+                if (isNaN(prepaymentVal) || prepaymentVal < 0) {
+                    errors.prepayment = 'Некорректная предоплата';
+                }
+            }
+
+            // Бизнес-логика: итоговая сумма = цена за участника × количество человек
+            const total = Math.max(0, price || 0) * Math.max(0, qty || 0);
+            if (prepaymentVal !== null && prepaymentVal > total) {
+                errors.prepayment = 'Не больше суммы';
+            }
+
+            return { errors, total, isValid: Object.keys(errors).length === 0 };
+        }
+
+        function syncBookingFormUI(validationResult) {
+            const form = bookingFormState.fields;
+            const res = validationResult || validateBookingForm(form);
+
+            const setError = (id, text) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = text || '';
+            };
+
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el && el.value !== val) el.value = val;
+            };
+
+            setVal('bookingTitle', form.name || '');
+            setVal('bookingDate', form.date || '');
+            setVal('bookingStart', form.startTime || '');
+            setVal('bookingEnd', form.endTime || '');
+            setVal('bookingPrice', form.price || '');
+            setVal('bookingQty', form.qty || '');
+            setVal('bookingPrepayment', form.prepayment || '');
+
+            setError('bookingErrorName', '');
+            setError('bookingErrorDate', res.errors.date);
+            setError('bookingErrorStartTime', res.errors.startTime);
+            setError('bookingErrorEndTime', res.errors.endTime);
+            setError('bookingErrorPrice', res.errors.price);
+            setError('bookingErrorQty', res.errors.qty);
+            setError('bookingErrorPrepayment', res.errors.prepayment);
+
+            const totalEl = document.getElementById('bookingTotalText');
+            if (totalEl) totalEl.innerText = `${(res.total || 0).toLocaleString('ru-RU')} ₽`;
+
+            const btn = document.getElementById('bookingFormSubmit');
+            if (btn) {
+                btn.disabled = !res.isValid || bookingFormState.isSubmitting;
+                btn.innerText = bookingFormState.isSubmitting ? 'Сохраняем...' : 'Сохранить бронь';
+            }
+        }
+
+        function updateBookingFormField(field, value) {
+            bookingFormState.fields[field] = value;
+            const validation = validateBookingForm(bookingFormState.fields);
+            bookingFormState.errors = validation.errors;
+            bookingFormState.total = validation.total;
+            syncBookingFormUI(validation);
+        }
+
+        function openAddBookingForm(dateIso) {
+            if (!dateIso) {
+                showToast('Сначала выберите дату в календаре', true);
+                return;
+            }
+            bookingFormState.isOpen = true;
+            bookingFormState.isSubmitting = false;
+            bookingFormState.fields = { name: '', date: dateIso, startTime: '', endTime: '', price: '', qty: '1', prepayment: '' };
+            const validation = validateBookingForm(bookingFormState.fields);
+            bookingFormState.errors = validation.errors;
+            bookingFormState.total = validation.total;
+            const sheet = document.getElementById('addBookingSheet');
+            if (sheet) sheet.style.display = 'flex';
+            syncBookingFormUI(validation);
+        }
+
+        function closeAddBookingForm() {
+            bookingFormState.isOpen = false;
+            bookingFormState.isSubmitting = false;
+            const sheet = document.getElementById('addBookingSheet');
+            if (sheet) sheet.style.display = 'none';
+        }
+
+        function handleAddBookingBackdrop(e) {
+            if (e.target.id === 'addBookingSheet') closeAddBookingForm();
+        }
+
+        function refreshBookingData(dateIso) {
+            if (!dateIso) return;
+            delete bookingsCache[dateIso];
+            if (activeBookingDate === dateIso) {
+                fetchBookingsForDate(dateIso);
+            }
+
+            const parsed = new Date(dateIso);
+            if (parsed instanceof Date && !isNaN(parsed.getTime())) {
+                const key = `${parsed.getFullYear()}-${parsed.getMonth()}`;
+                delete calendarDataCache[key];
+                if (parsed.getFullYear() === calendarYear && parsed.getMonth() === calendarMonth) {
+                    loadCalendarData();
+                }
+            } else {
+                loadCalendarData();
+            }
+        }
+
+        function submitBookingForm() {
+            const validation = validateBookingForm(bookingFormState.fields);
+            bookingFormState.errors = validation.errors;
+            bookingFormState.total = validation.total;
+            syncBookingFormUI(validation);
+            if (!validation.isValid) return;
+
+            bookingFormState.isSubmitting = true;
+            syncBookingFormUI(validation);
+
+            const payload = {
+                date: bookingFormState.fields.date,
+                name: (bookingFormState.fields.name || '').trim(),
+                startTime: bookingFormState.fields.startTime,
+                endTime: bookingFormState.fields.endTime,
+                price: Number(bookingFormState.fields.price) || 0,
+                participants: Number(bookingFormState.fields.qty) || 0,
+                prepayment: bookingFormState.fields.prepayment === '' ? 0 : Number(bookingFormState.fields.prepayment) || 0,
+                total: validation.total
+            };
+
+            runBackend('addBooking', payload)
+                .then(res => {
+                    bookingFormState.isSubmitting = false;
+                    if (res && res.success) {
+                        showToast('Бронь добавлена');
+                        closeAddBookingForm();
+                        refreshBookingData(payload.date);
+                    } else {
+                        showToast(res?.message || 'Не удалось сохранить', true);
+                        syncBookingFormUI(validation);
+                    }
+                })
+                .catch(err => {
+                    bookingFormState.isSubmitting = false;
+                    showToast('Ошибка сохранения: ' + err, true);
+                    syncBookingFormUI(validation);
+                });
         }
 
         function getCalendarCells(year, month) {
@@ -937,6 +1187,7 @@
                     else if(action === 'getAnalyticsData') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAnalyticsData(payload.year, payload.monthIdx);
                     else if(action === 'getCalendarData') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getCalendarData(payload.year, payload.month);
                     else if(action === 'getBookingsByDate') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBookingsByDate(payload.date);
+                    else if(action === 'addBooking') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).addBooking(payload);
                     else reject("Unknown Func");
                 });
             } else {
