@@ -102,29 +102,37 @@
         .nav-indicator { display: none; }
 
         /* CALENDAR */
-        .calendar-page { display: flex; flex-direction: column; gap: 16px; width: 100%; height: 100%; }
-        .calendar-panel { background: var(--bg-panel); border-radius: var(--radius); box-shadow: var(--shadow-card); border: 1px solid var(--border); padding: 18px; display: flex; flex-direction: column; gap: 16px; height: 100%; box-sizing: border-box; }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .calendar-title { font-size: 20px; font-weight: 800; color: var(--text-main); letter-spacing: -0.3px; }
-        .calendar-controls { display: flex; align-items: center; gap: 8px; }
-        .calendar-btn { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text-main); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; transition: 0.2s; }
+        .calendar-page { display: flex; flex-direction: column; gap: 12px; width: 100%; height: 100%; }
+        .calendar-panel { background: var(--bg-panel); border-radius: var(--radius); box-shadow: var(--shadow-card); border: 1px solid var(--border); padding: 14px; display: flex; flex-direction: column; gap: 12px; height: 100%; box-sizing: border-box; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+        .calendar-title { font-size: 18px; font-weight: 800; color: var(--text-main); letter-spacing: -0.3px; }
+        .calendar-controls { display: flex; align-items: center; gap: 6px; }
+        .calendar-btn { width: 34px; height: 34px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text-main); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; transition: 0.2s; }
         .calendar-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .calendar-sub { display: flex; align-items: center; gap: 10px; color: var(--text-sub); font-weight: 700; font-size: 13px; }
-        .year-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--input-bg); border: 1px solid var(--border-strong); border-radius: 12px; padding: 10px 12px; font-weight: 700; color: var(--text-main); }
-        .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; font-size: 12px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; flex: 1; position: relative; }
+        .calendar-sub { display: flex; align-items: center; gap: 8px; color: var(--text-sub); font-weight: 700; font-size: 12px; }
+        .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.4px; }
+        .calendar-weekdays div { padding: 8px 0; text-align: center; border-radius: 10px; border: 1px solid transparent; transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease; }
+        .calendar-weekdays div.weekend { color: color-mix(in srgb, var(--accent) 68%, var(--text-sub)); border-color: color-mix(in srgb, var(--accent) 18%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; flex: 1; position: relative; }
         .calendar-grid.is-loading::after { content: 'Загружаем даты…'; position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-sub); background: linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.02)); border-radius: var(--radius); z-index: 3; font-weight: 700; letter-spacing: 0.2px; }
         [data-theme="dark"] .calendar-grid.is-loading::after { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015)); }
-        .calendar-cell { min-height: 80px; border-radius: 14px; background: var(--input-bg); border: 1px solid var(--border); padding: 10px; display: flex; align-items: flex-start; justify-content: flex-start; font-weight: 800; color: var(--text-main); position: relative; box-shadow: var(--shadow-card); transition: transform 0.2s, box-shadow 0.2s, background-color 0.25s ease, border-color 0.25s ease; }
-        .calendar-cell:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+        .calendar-cell { min-height: 64px; border-radius: 12px; background: var(--input-bg); border: 1px solid var(--border); padding: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--text-main); position: relative; box-shadow: var(--shadow-card); transition: transform 0.2s, box-shadow 0.2s, background-color 0.25s ease, border-color 0.25s ease; }
+        .calendar-cell:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,0.06); }
         .calendar-cell.outside { opacity: 0.45; background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01)); }
+        .calendar-cell.weekend { border-color: color-mix(in srgb, var(--accent) 30%, var(--border-strong)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent); }
+        [data-theme="dark"] .calendar-cell.weekend { border-color: color-mix(in srgb, var(--accent) 40%, var(--border-strong)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent); }
         .calendar-cell[data-level="1"] { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: color-mix(in srgb, var(--accent) 28%, var(--border)); }
         .calendar-cell[data-level="2"] { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: color-mix(in srgb, var(--accent) 38%, var(--border-strong)); }
         .calendar-cell[data-level="3"] { background: color-mix(in srgb, var(--color-exp) 18%, transparent); border-color: color-mix(in srgb, var(--color-exp) 36%, var(--border-strong)); }
-        .calendar-cell .date-num { font-size: 16px; }
+        .calendar-cell .date-num { font-size: 15px; display: inline-flex; align-items: center; justify-content: center; width: 100%; text-align: center; }
         .calendar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .calendar-month-label { display: flex; align-items: center; gap: 8px; }
-        .calendar-month-label span { color: var(--text-sub); font-weight: 600; font-size: 13px; }
+        .calendar-month-label { display: flex; align-items: center; gap: 6px; }
+        .calendar-month-label span { color: var(--text-sub); font-weight: 600; font-size: 12px; }
+
+        .calendar-pickers { display: flex; align-items: center; gap: 6px; }
+        .calendar-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--input-bg); border: 1px solid var(--border-strong); border-radius: 12px; padding: 8px 12px; font-weight: 700; color: var(--text-main); cursor: pointer; transition: 0.2s ease; box-shadow: var(--shadow-card); }
+        .calendar-pill:active { transform: translateY(1px); opacity: 0.95; }
+        .calendar-pill .chevron { font-size: 12px; color: var(--text-sub); }
 
         .calendar-empty { display: grid; place-items: center; color: var(--text-sub); font-weight: 600; height: 100%; }
 
@@ -345,9 +353,9 @@
         .nav-btn.active { color: var(--accent); }
         .nav-btn.active svg { transform: translateY(-2px); fill: var(--accent); }
 
-        .calendar-panel { padding: 15px; }
-        .calendar-grid { gap: 8px; }
-        .calendar-cell { min-height: 70px; }
+        .calendar-panel { padding: 12px; }
+        .calendar-grid { gap: 6px; }
+        .calendar-cell { min-height: 60px; }
       }
     </style>
 </head>
@@ -456,17 +464,22 @@
 
         <div id="calendarTab" class="tab-page">
             <div class="calendar-page">
-                <div class="calendar-panel">
+                <div class="calendar-panel" id="calendarPanel">
                     <div class="calendar-header">
                         <div class="calendar-month-label">
                             <div class="calendar-title" id="calendarTitle">Календарь</div>
                             <span id="calendarHint">Сетка месяца</span>
                         </div>
                         <div class="calendar-actions">
-                            <div class="calendar-controls">
-                                <button class="calendar-btn" onclick="changeYear(-1)">−</button>
-                                <div class="year-pill" id="calendarYearLabel">2024</div>
-                                <button class="calendar-btn" onclick="changeYear(1)">+</button>
+                            <div class="calendar-pickers">
+                                <div class="calendar-pill" onclick="openCalendarSheet('month')">
+                                    <span id="calendarMonthLabel">Месяц</span>
+                                    <span class="chevron">▼</span>
+                                </div>
+                                <div class="calendar-pill" onclick="openCalendarSheet('year')">
+                                    <span id="calendarYearLabel">2024</span>
+                                    <span class="chevron">▼</span>
+                                </div>
                             </div>
                             <div class="calendar-controls">
                                 <button class="calendar-btn" onclick="changeMonth(-1)">←</button>
@@ -645,6 +658,8 @@
         let calendarMonth = new Date().getMonth();
         const calendarDataCache = {};
         const calendarRequests = {};
+        let calendarSwipeStartX = null;
+        let calendarSwipeStartY = null;
         const bookingsCache = {};
         const bookingRequests = {};
         let activeBookingDate = null;
@@ -916,7 +931,10 @@
             const wrap = document.getElementById('calendarWeekdays');
             if (!wrap) return;
             if (wrap.childElementCount) return;
-            wrap.innerHTML = weekDays.map(d => `<div>${d}</div>`).join('');
+            wrap.innerHTML = weekDays.map((d, idx) => {
+                const weekendClass = idx >= 5 ? 'weekend' : '';
+                return `<div class="${weekendClass}">${d}</div>`;
+            }).join('');
         }
 
         function renderCalendar(days = []) {
@@ -929,6 +947,7 @@
 
             document.getElementById('calendarTitle').innerText = `${monthNames[calendarMonth]} ${calendarYear}`;
             document.getElementById('calendarYearLabel').innerText = calendarYear;
+            document.getElementById('calendarMonthLabel').innerText = monthNames[calendarMonth];
 
             const hint = document.getElementById('calendarHint');
             if (hint) hint.innerText = `${weeksCount} нед. • ${dataByDate.size} дн. с данными`;
@@ -940,11 +959,12 @@
             }
 
             // Присваиваем цветовую насыщенность только дням, для которых пришли данные backend
-            grid.innerHTML = cells.map(c => {
+            grid.innerHTML = cells.map((c, idx) => {
                 const dayData = dataByDate.get(c.iso);
                 const level = getBookingLevel(dayData?.totalBookings);
                 const levelAttr = level ? ` data-level="${level}"` : '';
-                const clickableClass = c.inMonth ? 'clickable' : 'outside';
+                const isWeekend = idx % 7 >= 5;
+                const clickableClass = `${c.inMonth ? 'clickable' : 'outside'} ${isWeekend ? 'weekend' : ''}`.trim();
                 const dataAttrs = c.inMonth ? ` data-date="${c.iso}"` : '';
                 return `<div class="calendar-cell ${clickableClass}"${levelAttr}${dataAttrs}><span class="date-num">${c.day}</span></div>`;
             }).join('');
@@ -1230,6 +1250,12 @@
             loadCalendarData();
         }
 
+        function setCalendarMonth(monthIndex) {
+            if (typeof monthIndex !== 'number') return;
+            calendarMonth = Math.min(11, Math.max(0, monthIndex));
+            refreshCalendarPeriod();
+        }
+
         function changeMonth(delta) {
             calendarMonth += delta;
             if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
@@ -1240,6 +1266,71 @@
         function changeYear(delta) {
             calendarYear += delta;
             refreshCalendarPeriod();
+        }
+
+        function initCalendarGestures() {
+            const panel = document.getElementById('calendarPanel');
+            if (!panel) return;
+
+            panel.addEventListener('touchstart', e => {
+                const touch = e.touches[0];
+                calendarSwipeStartX = touch.clientX;
+                calendarSwipeStartY = touch.clientY;
+                e.stopPropagation();
+            });
+
+            panel.addEventListener('touchend', e => {
+                if (calendarSwipeStartX === null || calendarSwipeStartY === null) return;
+                const touch = e.changedTouches[0];
+                const dx = touch.clientX - calendarSwipeStartX;
+                const dy = touch.clientY - calendarSwipeStartY;
+                const threshold = 50;
+
+                if (Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy)) {
+                    if (dx < 0) changeMonth(1); else changeMonth(-1);
+                }
+
+                calendarSwipeStartX = null;
+                calendarSwipeStartY = null;
+                e.stopPropagation();
+            });
+        }
+
+        function getCalendarYearsRange() {
+            const current = new Date().getFullYear();
+            const yearsSet = new Set(availableYears || []);
+            for (let y = current - 3; y <= current + 3; y++) yearsSet.add(y);
+            return Array.from(yearsSet).sort((a, b) => a - b);
+        }
+
+        function openCalendarSheet(type) {
+            const sheet = document.getElementById('sheetModal');
+            const list = document.getElementById('sheetList');
+            const title = document.getElementById('sheetTitle');
+            if (!sheet || !list || !title) return;
+
+            list.innerHTML = '';
+            sheet.style.display = 'flex';
+
+            if (type === 'year') {
+                title.innerText = 'Выберите год';
+                getCalendarYearsRange().forEach(y => {
+                    const div = document.createElement('div');
+                    div.className = `sheet-item ${y === calendarYear ? 'selected' : ''}`;
+                    div.innerText = y;
+                    div.onclick = () => { calendarYear = y; refreshCalendarPeriod(); sheet.style.display = 'none'; };
+                    list.appendChild(div);
+                });
+            } else {
+                title.innerText = 'Выберите месяц';
+                monthNames.forEach((m, i) => {
+                    const div = document.createElement('div');
+                    div.className = `sheet-item ${i === calendarMonth ? 'selected' : ''}`;
+                    div.innerText = m;
+                    div.onclick = () => { setCalendarMonth(i); sheet.style.display = 'none'; };
+                    list.appendChild(div);
+                });
+            }
         }
         
         // --- ЛОГИКА СВАЙПОВ + ЗАЩИТА ОТ ГОРИЗОНТАЛЬНОЙ ПРОКРУТКИ ---
@@ -1380,6 +1471,7 @@
             v.addEventListener('animationiteration', () => { if (stopAnimationRequest) { v.classList.remove('spinning'); stopAnimationRequest = false; } });
             calcTotal();
             renderCalendar(calendarDataCache[getCalendarKey()] || []);
+            initCalendarGestures();
             initBookingSheetGestures();
         };
 
