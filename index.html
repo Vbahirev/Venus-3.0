@@ -568,7 +568,10 @@
     <div id="addBookingSheet" class="sheet-overlay" onclick="handleAddBookingBackdrop(event)">
         <div class="sheet-box booking-form-sheet" id="addBookingSheetBox">
             <div class="sheet-header" style="align-items:center;">
-                <span class="sheet-title">Новая бронь</span>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <span class="sheet-title" id="bookingFormTitle">Новая бронь</span>
+                    <span class="booking-sheet-subtitle" id="bookingFormSubtitle">Заполните детали</span>
+                </div>
                 <span class="sheet-close" onclick="closeAddBookingForm()">Отмена</span>
             </div>
             <div class="booking-form-grid">
@@ -580,7 +583,7 @@
                 <div class="booking-form-row">
                     <div>
                         <label for="bookingDate">Дата</label>
-                        <input id="bookingDate" type="date" readonly>
+                        <input id="bookingDate" type="date" oninput="updateBookingFormField('date', this.value)">
                         <div class="field-error" id="bookingErrorDate"></div>
                     </div>
                     <div>
@@ -650,6 +653,9 @@
         const bookingFormState = {
             isOpen: false,
             isSubmitting: false,
+            mode: 'create',
+            bookingId: null,
+            originalDate: null,
             fields: { name: '', date: '', startTime: '', endTime: '', price: '', qty: '1', prepayment: '' },
             errors: {},
             total: 0
@@ -710,6 +716,7 @@
         function syncBookingFormUI(validationResult) {
             const form = bookingFormState.fields;
             const res = validationResult || validateBookingForm(form);
+            const isEditMode = bookingFormState.mode === 'edit';
 
             const setError = (id, text) => {
                 const el = document.getElementById(id);
@@ -743,7 +750,17 @@
             const btn = document.getElementById('bookingFormSubmit');
             if (btn) {
                 btn.disabled = !res.isValid || bookingFormState.isSubmitting;
-                btn.innerText = bookingFormState.isSubmitting ? 'Сохраняем...' : 'Сохранить бронь';
+                btn.innerText = bookingFormState.isSubmitting ? 'Сохраняем...' : (isEditMode ? 'Сохранить изменения' : 'Сохранить бронь');
+            }
+
+            const titleEl = document.getElementById('bookingFormTitle');
+            if (titleEl) {
+                titleEl.innerText = isEditMode ? 'Редактирование брони' : 'Новая бронь';
+            }
+
+            const subtitle = document.getElementById('bookingFormSubtitle');
+            if (subtitle) {
+                subtitle.innerText = isEditMode ? 'Обновите данные без изменения статуса' : 'Заполните детали';
             }
         }
 
@@ -762,6 +779,9 @@
             }
             bookingFormState.isOpen = true;
             bookingFormState.isSubmitting = false;
+            bookingFormState.mode = 'create';
+            bookingFormState.bookingId = null;
+            bookingFormState.originalDate = dateIso;
             bookingFormState.fields = { name: '', date: dateIso, startTime: '', endTime: '', price: '', qty: '1', prepayment: '' };
             const validation = validateBookingForm(bookingFormState.fields);
             bookingFormState.errors = validation.errors;
@@ -774,6 +794,9 @@
         function closeAddBookingForm() {
             bookingFormState.isOpen = false;
             bookingFormState.isSubmitting = false;
+            bookingFormState.mode = 'create';
+            bookingFormState.bookingId = null;
+            bookingFormState.originalDate = null;
             const sheet = document.getElementById('addBookingSheet');
             if (sheet) sheet.style.display = 'none';
         }
@@ -821,14 +844,21 @@
                 prepayment: bookingFormState.fields.prepayment === '' ? 0 : Number(bookingFormState.fields.prepayment) || 0,
                 total: validation.total
             };
+            const isEdit = bookingFormState.mode === 'edit';
+            const action = isEdit ? 'updateBooking' : 'addBooking';
+            if (isEdit) payload.id = bookingFormState.bookingId;
 
-            runBackend('addBooking', payload)
+            runBackend(action, payload)
                 .then(res => {
                     bookingFormState.isSubmitting = false;
                     if (res && res.success) {
-                        showToast('Бронь добавлена');
+                        showToast(isEdit ? 'Изменения сохранены' : 'Бронь добавлена');
+                        const newDate = payload.date;
+                        const previousDate = bookingFormState.originalDate || newDate;
                         closeAddBookingForm();
-                        refreshBookingData(payload.date);
+                        // Обновляем оба дня, если дата перенесена
+                        const datesToRefresh = new Set([previousDate, newDate]);
+                        datesToRefresh.forEach(d => refreshBookingData(d));
                     } else {
                         showToast(res?.message || 'Не удалось сохранить', true);
                         syncBookingFormUI(validation);
@@ -1127,6 +1157,45 @@
             invalidateCalendarCache(dateIso);
         }
 
+        function openEditBookingForm(id) {
+            if (!id) return;
+            const dateIso = activeBookingDate;
+            const dayBookings = bookingsCache[dateIso] || [];
+            const target = dayBookings.find(b => b.id === id);
+
+            if (!target) {
+                showToast('Бронь не найдена', true);
+                return;
+            }
+
+            if (isFinalBookingStatus(target.status)) {
+                showToast('Нельзя редактировать завершённые/отменённые записи', true);
+                return;
+            }
+
+            bookingFormState.mode = 'edit';
+            bookingFormState.bookingId = id;
+            bookingFormState.originalDate = dateIso || target.date;
+            bookingFormState.fields = {
+                name: target.name || '',
+                date: target.date || dateIso,
+                startTime: target.startTime || '',
+                endTime: target.endTime || '',
+                price: target.price ?? '',
+                qty: target.qty ?? '',
+                prepayment: target.prepayment ?? ''
+            };
+
+            const validation = validateBookingForm(bookingFormState.fields);
+            bookingFormState.errors = validation.errors;
+            bookingFormState.total = validation.total;
+            bookingFormState.isSubmitting = false;
+
+            const sheet = document.getElementById('addBookingSheet');
+            if (sheet) sheet.style.display = 'flex';
+            syncBookingFormUI(validation);
+        }
+
         function invalidateCalendarCache(dateIso) {
             const parts = String(dateIso || '').split('-').map(Number);
             if (parts.length < 2) return;
@@ -1145,7 +1214,7 @@
             fetchBookingsForDate(cellData.iso);
         }
 
-        function onBookingEdit(id) { console.log('edit booking', id); }
+        function onBookingEdit(id) { openEditBookingForm(id); }
         function onBookingMarkDone(id) { changeBookingStatusUI(id, BOOKING_STATUS.done); }
         function onBookingCancel(id) { changeBookingStatusUI(id, BOOKING_STATUS.canceled); }
 
@@ -1281,6 +1350,7 @@
                     else if(action === 'getCalendarData') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getCalendarData(payload.year, payload.month);
                     else if(action === 'getBookingsByDate') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBookingsByDate(payload.date);
                     else if(action === 'addBooking') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).addBooking(payload);
+                    else if(action === 'updateBooking') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).updateBooking(payload.id, payload);
                     else if(action === 'changeBookingStatus') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).changeBookingStatus(payload.id, payload.status);
                     else reject("Unknown Func");
                 });
