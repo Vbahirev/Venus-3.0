@@ -370,6 +370,24 @@ function ensureBookingSheet() {
   return sheet;
 }
 
+function ensureIncomeSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(INCOME_SHEET);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(INCOME_SHEET);
+    sheet.appendRow(["Дата", "Название", "Кол-во", "Цена", "Итого"]);
+    return sheet;
+  }
+
+  const hasHeader = sheet.getRange(1, 1, 1, 5).getValues()[0].some(Boolean);
+  if (!hasHeader) {
+    sheet.getRange(1, 1, 1, 5).setValues([["Дата", "Название", "Кол-во", "Цена", "Итого"]]);
+  }
+
+  return sheet;
+}
+
 function isValidBookingStatus(status) {
   return Object.values(BOOKING_STATUSES).indexOf(status) !== -1;
 }
@@ -545,14 +563,85 @@ function updateBooking(id, data) {
 }
 
 function changeBookingStatus(id, status) {
-  ensureBookingSheet();
+  const bookingSheet = ensureBookingSheet();
   if (!isValidBookingStatus(status)) {
     return { success: false, message: 'Invalid booking status', id: id, status: status };
   }
-  return {
-    success: false,
-    message: 'changeBookingStatus is not implemented yet',
+
+  const lastRow = bookingSheet.getLastRow();
+  if (lastRow < 2) {
+    return { success: false, message: 'Booking not found', id: id, status: status };
+  }
+
+  const values = bookingSheet.getRange(2, 1, lastRow - 1, BOOKING_HEADERS.length).getValues();
+  const timezone = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+  let targetIndex = -1;
+  let rowData = null;
+
+  values.some((row, idx) => {
+    if (String(row[BOOKING_COLS.id - 1]) === String(id)) {
+      targetIndex = idx;
+      rowData = row;
+      return true;
+    }
+    return false;
+  });
+
+  if (targetIndex === -1 || !rowData) {
+    return { success: false, message: 'Booking not found', id: id, status: status };
+  }
+
+  const currentStatus = String(rowData[BOOKING_COLS.status - 1] || '').trim() || BOOKING_STATUSES.planned;
+
+  // Финальные статусы менять нельзя, чтобы не создавать дубликатов доходов
+  if (currentStatus === BOOKING_STATUSES.done || currentStatus === BOOKING_STATUSES.canceled) {
+    return { success: false, message: 'Booking already processed', id: id, status: currentStatus };
+  }
+
+  if (currentStatus === status) {
+    return { success: false, message: 'Status is already set', id: id, status: currentStatus };
+  }
+
+  // Обновляем статус в "Календарь_Брони"
+  const targetRowNumber = targetIndex + 2; // смещение из-за заголовка
+  bookingSheet.getRange(targetRowNumber, BOOKING_COLS.status).setValue(status);
+
+  // --- Автодобавление дохода по бизнес-правилам ---
+  const dateCell = rowData[BOOKING_COLS.date - 1];
+  const title = rowData[BOOKING_COLS.title - 1] || '';
+  const price = Number(rowData[BOOKING_COLS.price - 1]) || 0;
+  const qty = Number(rowData[BOOKING_COLS.participants - 1]) || 0;
+  const prepayment = Number(rowData[BOOKING_COLS.prepayment - 1]) || 0;
+
+  const incomeSheet = ensureIncomeSheet();
+
+  const incomeRows = [];
+  if (status === BOOKING_STATUSES.done) {
+    const total = price * qty;
+    incomeRows.push([dateCell instanceof Date ? dateCell : new Date(), title, qty, price, total]);
+  } else if (status === BOOKING_STATUSES.canceled && prepayment > 0) {
+    incomeRows.push([dateCell instanceof Date ? dateCell : new Date(), title, 1, prepayment, prepayment]);
+  }
+
+  if (incomeRows.length) {
+    // Добавляем только новые доходы, чтобы не пересчитывать прошлые записи
+    incomeSheet.getRange(incomeSheet.getLastRow() + 1, 1, incomeRows.length, 5).setValues(incomeRows);
+  }
+
+  const updatedBooking = {
     id: id,
-    status: status
+    status: status,
+    name: title,
+    qty: qty,
+    price: price,
+    total: price * qty,
+    prepayment: prepayment,
+    date: dateCell instanceof Date ? Utilities.formatDate(dateCell, timezone, 'yyyy-MM-dd') : null
+  };
+
+  return {
+    success: true,
+    message: 'Booking status updated',
+    booking: updatedBooking
   };
 }
