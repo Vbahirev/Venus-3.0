@@ -5,11 +5,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Venus Workshop</title>
+    <!-- Подключаем Telegram WebApp для работы в боте -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Шрифты и графики -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
+      /* === ЦВЕТОВЫЕ ПЕРЕМЕННЫЕ И ТЕМЫ === */
       :root { 
         --bg-app: #F2F2F7;
         --bg-panel: linear-gradient(180deg, #FFFFFF 0%, #F5F7FA 100%);      
@@ -20,10 +23,10 @@
         --border-strong: #C7C7CC;
         --input-bg: #FFFFFF;      
         
-        --color-inc: #34C759;
-        --color-exp: #FF3B30;     
-        --color-prof: #5856D6;    
-        --color-vis: #AF52DE;
+        --color-inc: #34C759; /* Доход - Зеленый */
+        --color-exp: #FF3B30; /* Расход - Красный */
+        --color-prof: #5856D6; /* Прибыль - Фиолетовый */
+        --color-vis: #AF52DE; /* Посетители - Пурпурный */
         
         --danger: #FF3B30;
         --shadow-card: 0 4px 12px rgba(0,0,0,0.06);
@@ -49,113 +52,118 @@
         --scroll-thumb: #475569;
       }
       
-      * { -webkit-tap-highlight-color: transparent; }
-      
-      /* --- ПРОСТАЯ И НАДЕЖНАЯ АНИМАЦИЯ --- */
-      ::view-transition-old(root),
-      ::view-transition-new(root) {
-          animation: none;
-          mix-blend-mode: normal;
-          position: absolute;
-          width: 100%; height: 100%; top: 0; left: 0;
-      }
-
-      ::view-transition-new(root) { z-index: 9999; }
-      ::view-transition-old(root) { z-index: 1; }
-      
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background-color: var(--scroll-thumb); border-radius: 10px; }
+      * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
       
       body { 
-          margin: 0;
-          padding: 20px; 
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
-          background-color: var(--bg-app); 
-          color: var(--text-main); 
+          margin: 0; padding: 20px; 
+          font-family: 'Inter', sans-serif; 
+          background-color: var(--bg-app); color: var(--text-main); 
           height: 100vh; height: 100dvh; 
-          box-sizing: border-box; 
           overflow: hidden; 
-          display:flex;
-          flex-direction:column;
-          -webkit-font-smoothing: antialiased;
-          font-weight: 500;
+          display:flex; flex-direction:column;
+          -webkit-font-smoothing: antialiased; font-weight: 500;
       }
+
+      /* === ОКНО СПИСКА БРОНИРОВАНИЙ (КАРТОЧКА ПО ЦЕНТРУ) === */
+      #bookingSheet {
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 20px;
+      }
+      #bookingSheetBox {
+          width: 100%; max-width: 400px; max-height: 80vh;
+          border-radius: 24px; margin: 0 auto;
+          transform: scale(0.95); opacity: 0;
+          animation: popInCenter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          background: var(--bg-panel);
+          display: flex; flex-direction: column;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      }
+      @keyframes popInCenter { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       
+      /* === iOS PICKER (ЕДИНЫЙ СТИЛЬ ДЛЯ ВСЕХ СПИСКОВ) === */
+      .ios-picker-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.6); z-index: 5000;
+        display: none; align-items: flex-end; justify-content: center;
+        backdrop-filter: blur(3px);
+      }
+      .ios-picker-container {
+        background: #1c1c1e; /* Темный фон всегда для стиля iOS */
+        width: 100%; max-width: 500px;
+        border-top-left-radius: 16px; border-top-right-radius: 16px;
+        overflow: hidden; padding-bottom: 20px;
+        box-shadow: 0 -5px 20px rgba(0,0,0,0.3);
+        animation: slideUpPicker 0.3s ease-out;
+        --item-height: 44px; --picker-height: 220px;
+        --text-main: #ffffff; --text-muted: #8e8e93;
+        color: white;
+      }
+      @keyframes slideUpPicker { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+      .ios-tabs {
+        display: flex; background: #1c1c1e; padding: 10px 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        justify-content: space-between; align-items: center;
+      }
+      .ios-tab-btn { background: none; border: none; font-size: 17px; cursor: pointer; color: #0a84ff; font-weight: 600; padding: 5px 10px; }
+      .ios-tab-title { font-weight: 600; font-size: 17px; color: white; }
+
+      .picker-area {
+        position: relative; height: var(--picker-height);
+        display: flex; justify-content: center;
+        mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+      }
+      .picker-highlight {
+        position: absolute; top: 50%; left: 0; right: 0; height: 36px;
+        transform: translateY(-50%); pointer-events: none; z-index: 0;
+        background: rgba(255,255,255,0.08);
+        border-top: 1px solid rgba(255, 255, 255, 0.15); border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      .picker-col {
+        flex: 1; height: 100%; overflow-y: scroll;
+        scroll-snap-type: y mandatory; scrollbar-width: none;
+        z-index: 1; padding: 0; margin: 0; text-align: center;
+      }
+      .picker-col::-webkit-scrollbar { display: none; }
+      .picker-item {
+        height: var(--item-height); display: flex; align-items: center; justify-content: center;
+        font-size: 21px; color: var(--text-muted); scroll-snap-align: center;
+        transition: 0.2s; opacity: 0.4; transform: scale(0.9);
+      }
+      .picker-item.active { opacity: 1; color: var(--text-main); transform: scale(1.1); font-weight: 500; }
+      
+      /* Настройки ширины колонок для разных типов */
+      .layout-date .picker-col:nth-child(1) { flex: 0.8; } 
+      .layout-date .picker-col:nth-child(2) { flex: 2; }
+      .layout-date .picker-col:nth-child(3) { flex: 1.2; }
+      .layout-time .picker-col { flex: 1; }
+      .padder { height: calc((var(--picker-height) - var(--item-height)) / 2); width: 100%; }
+
+      /* === ОБЩИЙ ЛЭЙАУТ === */
       .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0; }
       .brand-box { display: flex; align-items: center; gap: 12px; }
       .title { margin: 0; font-size: 24px; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; }
-      
       .venus-icon { width: 42px; height: 42px; cursor: pointer; transition: transform 0.5s ease; position: relative; z-index: 5; }
-      .venus-icon:active { transform: scale(0.9); }
       .venus-icon.spinning { animation: spinInfinite 1.5s linear infinite; }
       @keyframes spinInfinite { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-      /* NAV */
       .nav { display: flex; background: var(--bg-panel); padding: 4px; border-radius: 14px; margin-bottom: 20px; flex-shrink: 0; box-shadow: var(--shadow-card); border: 1px solid var(--border); position: relative; }
       .nav-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-sub); border-radius: 10px; cursor: pointer; font-weight: 600; text-align: center; transition: 0.2s; font-size: 14px; z-index: 2; position: relative; display: flex; align-items: center; justify-content: center; gap:8px;}
-      .nav-btn:hover { color: var(--text-main); }
       .nav-btn.active { color: var(--text-main); background: var(--bg-app); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
       [data-theme="dark"] .nav-btn.active { background: #334155; box-shadow: none; }
       .nav-btn svg { width: 18px; height: 18px; fill: currentColor; opacity: 0.7; }
-        .nav-btn.active svg { opacity: 1; color: var(--accent); fill: var(--accent); }
-        .nav-indicator { display: none; }
+      .nav-btn.active svg { opacity: 1; color: var(--accent); fill: var(--accent); }
+      .nav-indicator { display: none; }
 
-        /* CALENDAR */
-        .calendar-page { display: flex; flex-direction: column; gap: 12px; width: 100%; height: 100%; }
-        .calendar-panel { background: var(--bg-panel); border-radius: var(--radius); box-shadow: var(--shadow-card); border: 1px solid var(--border); padding: 14px; display: flex; flex-direction: column; gap: 12px; height: 100%; box-sizing: border-box; }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-        .calendar-title { font-size: 18px; font-weight: 800; color: var(--text-main); letter-spacing: -0.3px; }
-        .calendar-controls { display: flex; align-items: center; gap: 6px; }
-        .calendar-btn { width: 34px; height: 34px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text-main); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; transition: 0.2s; }
-        .calendar-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .calendar-sub { display: flex; align-items: center; gap: 8px; color: var(--text-sub); font-weight: 700; font-size: 12px; }
-        .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.4px; }
-        .calendar-weekdays div { padding: 8px 0; text-align: center; border-radius: 10px; border: 1px solid transparent; transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease; }
-        .calendar-weekdays div.weekend { color: color-mix(in srgb, var(--accent) 68%, var(--text-sub)); border-color: color-mix(in srgb, var(--accent) 18%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; flex: 1; position: relative; }
-        .calendar-grid.is-loading::after { content: 'Загружаем даты…'; position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-sub); background: linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.02)); border-radius: var(--radius); z-index: 3; font-weight: 700; letter-spacing: 0.2px; }
-        [data-theme="dark"] .calendar-grid.is-loading::after { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015)); }
-        .calendar-cell { min-height: 64px; border-radius: 12px; background: var(--input-bg); border: 1px solid var(--border); padding: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--text-main); position: relative; box-shadow: var(--shadow-card); transition: transform 0.2s, box-shadow 0.2s, background-color 0.25s ease, border-color 0.25s ease; }
-        .calendar-cell:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,0.06); }
-        .calendar-cell.outside { opacity: 0.45; background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01)); }
-        .calendar-cell.weekend { border-color: color-mix(in srgb, var(--accent) 30%, var(--border-strong)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent); }
-        [data-theme="dark"] .calendar-cell.weekend { border-color: color-mix(in srgb, var(--accent) 40%, var(--border-strong)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent); }
-        .calendar-cell[data-level="1"] { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: color-mix(in srgb, var(--accent) 28%, var(--border)); }
-        .calendar-cell[data-level="2"] { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: color-mix(in srgb, var(--accent) 38%, var(--border-strong)); }
-        .calendar-cell[data-level="3"] { background: color-mix(in srgb, var(--color-exp) 18%, transparent); border-color: color-mix(in srgb, var(--color-exp) 36%, var(--border-strong)); }
-        .calendar-cell .date-num { font-size: 15px; display: inline-flex; align-items: center; justify-content: center; width: 100%; text-align: center; }
-        .calendar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .calendar-month-label { display: flex; align-items: center; gap: 6px; }
-        .calendar-month-label span { color: var(--text-sub); font-weight: 600; font-size: 12px; }
-
-        .calendar-pickers { display: flex; align-items: center; gap: 6px; }
-        .calendar-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--input-bg); border: 1px solid var(--border-strong); border-radius: 12px; padding: 8px 12px; font-weight: 700; color: var(--text-main); cursor: pointer; transition: 0.2s ease; box-shadow: var(--shadow-card); }
-        .calendar-pill:active { transform: translateY(1px); opacity: 0.95; }
-        .calendar-pill .chevron { font-size: 12px; color: var(--text-sub); }
-
-        .calendar-empty { display: grid; place-items: center; color: var(--text-sub); font-weight: 600; height: 100%; }
-
-        /* CONTENT & ANIMATIONS */
-        .content-area { flex: 1; position: relative; overflow: hidden; border-radius: var(--radius); display: flex; }
-      
+      .content-area { flex: 1; position: relative; overflow: hidden; border-radius: var(--radius); display: flex; }
       .tab-page { display: none; width: 100%; height: 100%; }
       .tab-page.active { display: block; }
       
-      /* Анимации для свайпов (Slide Effect) */
-      .anim-next { animation: slideInRight 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-      .anim-prev { animation: slideInLeft 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
       .anim-fade { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-      @keyframes slideInRight {
-          from { transform: translateX(100%); opacity: 0.5; }
-          to { transform: translateX(0); opacity: 1; }
-      }
-      @keyframes slideInLeft {
-          from { transform: translateX(-100%); opacity: 0.5; }
-          to { transform: translateX(0); opacity: 1; }
-      }
-      
       .split-view { display: flex; height: 100%; gap: 20px; }
       .panel { background: var(--bg-panel); border-radius: var(--radius); box-shadow: var(--shadow-card); overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border); }
       .panel-left { width: 360px; padding: 30px; flex-shrink: 0; overflow-y: auto; }
@@ -164,198 +172,109 @@
       h3 { margin-top: 0; font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 20px; }
       label { font-size: 12px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; display: block; letter-spacing: 0.02em; }
       
-      input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-      input[type=number] { -moz-appearance: textfield; }
-
-      input, select, .custom-select-trigger { 
-          width: 100%; padding: 14px; 
-          border-radius: 12px; border: 1px solid var(--border-strong); 
-          background-color: var(--input-bg); color: var(--text-main); 
-          font-size: 15px; box-sizing: border-box; outline:none; transition:0.2s; 
-          font-weight: 600; font-family: 'Inter', sans-serif;
-      }
-      
-      .custom-select-wrapper { position: relative; width: 100%; cursor: pointer; }
-      .custom-select-trigger { display: flex; justify-content: space-between; align-items: center; }
-      .custom-select-trigger::after { content: '▼'; font-size: 10px; color: var(--text-sub); margin-left: 10px; }
-      input:focus, .custom-select-trigger:active { border-color: var(--accent); background: var(--bg-panel); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+      input, select, .custom-select-trigger { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border-strong); background-color: var(--input-bg); color: var(--text-main); font-size: 15px; box-sizing: border-box; outline:none; transition:0.2s; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; }
+      input:focus { border-color: var(--accent); }
       
       .qty-wrapper { display: flex; align-items: center; background: var(--input-bg); border: 1px solid var(--border-strong); border-radius: 12px; overflow: hidden; padding: 2px; }
       .qty-btn { width: 44px; height: 44px; background: transparent; border: none; color: var(--text-main); font-size: 20px; cursor: pointer; border-radius: 10px; transition: 0.2s; font-weight: 600; }
-      .qty-btn:hover { background: rgba(0,0,0,0.05); }
       .qty-input { text-align: center; border: none; font-weight: 700; font-size: 18px; flex: 1; padding: 0; background: transparent; color: var(--text-main); -moz-appearance: textfield; }
-      .qty-input:focus { box-shadow: none; border: none; }
-
       .btn { width: 100%; padding: 18px; background: var(--accent); color: white; border: none; border-radius: 16px; font-weight: 700; cursor: pointer; margin-top: 20px; font-size: 16px; transition: 0.2s; }
       .btn:active { transform: scale(0.98); opacity: 0.9; }
       
       .table-header { padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-      .btn-refresh { padding: 8px 16px; background-color: transparent; border: 1px solid var(--border-strong); border-radius: 8px; font-weight: 600; cursor: pointer; color: var(--text-main); font-size: 12px; transition: 0.2s; }
-      .btn-refresh:hover { background-color: var(--input-bg); border-color: var(--accent); color: var(--accent); }
-
       .grid-wrapper { flex: 1; overflow-y: auto; padding: 0 10px; }
-      
-      /* --- ТАБЛИЦА (С ГОРИЗОНТАЛЬНЫМ СКРОЛЛОМ) --- */
-      table { 
-          width: 100%; border-collapse: separate; 
-          border-spacing: 0 8px; 
-          min-width: 500px; 
-          table-layout: auto; 
-      }
-      
+      table { width: 100%; border-collapse: separate; border-spacing: 0 8px; min-width: 500px; }
       th { position: sticky; top: 0; background: var(--bg-panel); color: var(--text-sub); font-size: 11px; text-transform: uppercase; text-align: left; padding: 10px 15px; font-weight: 700; z-index: 10; }
-      
-      td { 
-          padding: 16px 10px; background: var(--input-bg); border: 1px solid var(--border); font-size: 14px; color: var(--text-main); vertical-align: middle; font-weight: 500; 
-          white-space: normal;
-      }
-      
+      td { padding: 16px 10px; background: var(--input-bg); border: 1px solid var(--border); font-size: 14px; color: var(--text-main); vertical-align: middle; font-weight: 500; }
       tr td:first-child { border-top-left-radius: 14px; border-bottom-left-radius: 14px; border-right: none; }
       tr td:last-child { border-top-right-radius: 14px; border-bottom-right-radius: 14px; text-align: right; border-left: none; }
-      tr td:not(:first-child):not(:last-child) { border-left: none; border-right: none; }
-      
-      th:nth-child(1) { width: 70px; } 
-      th:nth-child(2) { width: auto; } 
-      th:nth-child(3) { width: 90px; text-align: right; } 
-      th:nth-child(4) { width: 90px; text-align: right; } 
-
-      td:nth-child(3) { font-weight: 700; text-align: right; }
-
-      .btn-table { 
-          padding: 0; width: 34px; height: 34px; 
-          border-radius: 10px; cursor: pointer; 
-          border: 1px solid var(--border-strong); background: transparent; color: var(--text-sub); 
-          margin-left: 4px; display: inline-flex; align-items: center; justify-content: center;
-          transition: 0.2s;
-      }
+      .btn-table { padding: 0; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; border: 1px solid var(--border-strong); background: transparent; color: var(--text-sub); margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; }
       .btn-table svg { width: 16px; height: 16px; fill: currentColor; }
-      .btn-edit:hover { border-color: var(--accent); background-color: var(--accent); color: white; }
-      .btn-del:hover { border-color: var(--danger); background-color: var(--danger); color: white; }
 
+      /* Календарь */
+      .calendar-page { display: flex; flex-direction: column; gap: 16px; width: 100%; height: 100%; }
+      .calendar-panel { background: var(--bg-panel); border-radius: var(--radius); box-shadow: var(--shadow-card); border: 1px solid var(--border); padding: 18px; display: flex; flex-direction: column; gap: 16px; height: 100%; box-sizing: border-box; }
+      .calendar-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .calendar-title { font-size: 20px; font-weight: 800; color: var(--text-main); letter-spacing: -0.3px; }
+      .calendar-controls { display: flex; align-items: center; gap: 8px; }
+      .calendar-btn { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--input-bg); color: var(--text-main); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; transition: 0.2s; }
+      .year-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--input-bg); border: 1px solid var(--border-strong); border-radius: 12px; padding: 10px 12px; font-weight: 700; color: var(--text-main); }
+      .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; font-size: 12px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; }
+      .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; flex: 1; position: relative; }
+      .calendar-cell { min-height: 80px; border-radius: 14px; background: var(--input-bg); border: 1px solid var(--border); padding: 10px; display: flex; align-items: flex-start; justify-content: flex-start; font-weight: 800; color: var(--text-main); position: relative; box-shadow: var(--shadow-card); transition: transform 0.2s; }
+      .calendar-cell:hover { transform: translateY(-2px); }
+      .calendar-cell.outside { opacity: 0.45; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01)); }
+      .calendar-cell[data-level="1"] { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: color-mix(in srgb, var(--accent) 28%, var(--border)); }
+      .calendar-cell[data-level="2"] { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: color-mix(in srgb, var(--accent) 38%, var(--border-strong)); }
+      .calendar-cell[data-level="3"] { background: color-mix(in srgb, var(--color-exp) 18%, transparent); border-color: color-mix(in srgb, var(--color-exp) 36%, var(--border-strong)); }
+      .calendar-cell.clickable { cursor: pointer; }
+
+      /* Аналитика */
       .analytics-container { padding: 0 10px 20px 10px; overflow-y: auto; height: 100%; width: 100%; box-sizing: border-box; }
-      .filters-row { display: flex; gap: 15px; margin-bottom: 25px; }
-      .filters-row .custom-select-wrapper { flex: 1; }
-      
       .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-      .kpi-card { background: var(--bg-panel); padding: 25px; border-radius: 24px; box-shadow: var(--shadow-card); position: relative; border: 1px solid var(--border); }
-      .kpi-title { font-size: 12px; color: var(--text-sub); text-transform: uppercase; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px; }
-      .kpi-val { font-size: 32px; font-weight: 800; color: var(--text-main); letter-spacing: -1px; }
+      .kpi-card { background: var(--bg-panel); padding: 25px; border-radius: 24px; box-shadow: var(--shadow-card); border: 1px solid var(--border); }
+      .kpi-title { font-size: 12px; color: var(--text-sub); text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
+      .kpi-val { font-size: 32px; font-weight: 800; color: var(--text-main); }
       .kpi-trend { font-size: 13px; font-weight: 700; margin-top: 5px; display: inline-block; padding: 4px 10px; border-radius: 20px; }
       .trend-up { background: rgba(52, 199, 89, 0.15); color: var(--color-inc); }
       .trend-down { background: rgba(255, 59, 48, 0.15); color: var(--color-exp); }
-      
       .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; margin-bottom: 25px; }
       .chart-box { background: var(--bg-panel); border-radius: 24px; padding: 25px; box-shadow: var(--shadow-card); display: flex; flex-direction: column; min-height: 320px; border: 1px solid var(--border); }
       .chart-head { font-weight: 700; font-size: 18px; margin-bottom: 20px; color: var(--text-main); }
       .chart-canv { flex: 1; position: relative; }
-
-      .prog-list { display: flex; flex-direction: column; gap: 10px; overflow-y: hidden; overflow-x: hidden; }
+      .prog-list { display: flex; flex-direction: column; gap: 10px; }
       .prog-item { display: flex; flex-direction: column; gap: 4px; }
       .prog-info { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-main); }
-      .prog-bar-bg { width: 100%; height: 6px; background: var(--input-bg); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); box-sizing: border-box; }
-      .prog-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease-out; }
-
-      .search-wrap { position: relative; margin-bottom: 15px; }
-      .search-res { position: absolute; top: 100%; left: 0; width: 100%; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; margin-top: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
-      .res-item { padding: 14px 20px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text-main); font-weight: 600; }
-      .res-item:hover { background: var(--hover-bg); color: var(--accent); }
-
-      .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-      .modal-box { background: var(--bg-panel); padding: 25px; border-radius: 20px; width: 340px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.3); transform: scale(0.95); animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-      .sheet-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; display: none; align-items: flex-end; justify-content: center; backdrop-filter: blur(2px); }
-      .sheet-box { width: 100%; background: var(--bg-panel); border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 20px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; max-height: 60vh; overflow-y: auto; }
-      .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-      .sheet-title { font-weight: 700; font-size: 16px; color: var(--text-main); }
-      .sheet-close { color: var(--accent); font-weight: 600; cursor: pointer; padding: 5px; }
-      .sheet-item { padding: 16px; border-bottom: 1px solid var(--border); font-size: 16px; color: var(--text-main); font-weight: 500; cursor: pointer; text-align: center; }
-      .sheet-item:last-child { border-bottom: none; }
-      .sheet-item.selected { color: var(--accent); font-weight: 700; }
-
-      /* --- Боковой лист дня --- */
-      .booking-sheet-box { max-height: 70vh; }
-      .booking-sheet-header { align-items: flex-start; gap: 10px; }
-      .booking-sheet-titles { display: flex; flex-direction: column; gap: 4px; }
-      .booking-sheet-subtitle { color: var(--text-sub); font-size: 13px; font-weight: 600; }
-      .booking-sheet-content { display: flex; flex-direction: column; gap: 12px; }
-      .booking-empty { padding: 20px; text-align: center; color: var(--text-sub); font-weight: 600; }
+      .prog-bar-bg { width: 100%; height: 6px; background: var(--input-bg); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+      .prog-bar-fill { height: 100%; border-radius: 3px; }
+      
+      /* Карточки бронирования */
       .booking-card { background: var(--input-bg); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: 10px; animation: fadeIn 0.25s ease; }
-      .booking-card.status-done { border-color: color-mix(in srgb, var(--color-inc) 55%, var(--border)); background: color-mix(in srgb, var(--color-inc) 6%, var(--input-bg)); }
-      .booking-card.status-canceled { border-color: color-mix(in srgb, var(--danger) 55%, var(--border)); background: color-mix(in srgb, var(--danger) 6%, var(--input-bg)); }
-      .booking-card.is-loading { opacity: 0.7; }
-      .booking-card-header { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-      .booking-title { font-size: 16px; font-weight: 800; color: var(--text-main); }
-      .booking-status { padding: 6px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+      .booking-status { padding: 6px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
       .status-planned { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
       .status-done { background: color-mix(in srgb, var(--color-inc) 18%, transparent); color: var(--color-inc); }
       .status-canceled { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
-      .booking-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; font-size: 13px; color: var(--text-sub); font-weight: 700; }
-      .booking-meta span { display: inline-flex; align-items: center; gap: 6px; }
-      .booking-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-      .booking-btn { flex: 1; min-width: 120px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--bg-panel); color: var(--text-main); font-weight: 700; cursor: pointer; transition: 0.2s; }
-      .booking-btn:active { transform: translateY(1px); opacity: 0.95; }
-      .booking-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-      .booking-btn.edit { border-color: var(--accent); color: var(--accent); }
-      .booking-btn.done { border-color: var(--color-inc); color: var(--color-inc); }
-      .booking-btn.cancel { border-color: var(--danger); color: var(--danger); }
-      .booking-add-btn { padding: 10px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border-strong)); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 800; cursor: pointer; transition: 0.2s; }
-      .booking-add-btn:active { transform: translateY(1px); opacity: 0.9; }
-      .booking-form-sheet { max-height: 80vh; }
+      .booking-btn { flex: 1; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--bg-panel); color: var(--text-main); font-weight: 700; cursor: pointer; }
+
+      /* Модалки */
+      .modal-overlay, .sheet-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+      .modal-box { background: var(--bg-panel); padding: 25px; border-radius: 20px; width: 340px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: popIn 0.3s forwards; }
+      .sheet-box { width: 100%; background: var(--bg-panel); border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 20px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); animation: slideUp 0.3s forwards; max-height: 85vh; overflow-y: auto; }
+      .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+      .sheet-title { font-weight: 700; font-size: 16px; color: var(--text-main); }
+      .sheet-close { color: var(--accent); font-weight: 600; cursor: pointer; padding: 5px; }
       .booking-form-grid { display: flex; flex-direction: column; gap: 12px; }
       .booking-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
       .field-error { color: var(--danger); font-size: 12px; font-weight: 700; margin-top: 4px; min-height: 14px; }
       .booking-total { font-size: 18px; font-weight: 800; margin-top: 4px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; background: var(--input-bg); padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border-strong); }
-      .btn.secondary { background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-strong); }
-      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-      .calendar-cell.clickable { cursor: pointer; }
-      .calendar-cell.outside { pointer-events: none; }
-
+      .booking-sheet-content { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex:1; padding-bottom:10px; }
       @keyframes popIn { to { transform: scale(1); } }
       @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
       .loader { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.01); z-index:50; display:none; }
-      .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 8px; opacity: 0; transition: 0.3s; z-index: 3000; font-size: 14px; font-weight: 500; box-shadow: 0 10px 20px -3px rgba(0,0,0,0.2); pointer-events: none; }
+      .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 8px; opacity: 0; transition: 0.3s; z-index: 3000; font-size: 14px; font-weight: 500; pointer-events: none; }
       .toast.show { opacity: 1; bottom: 100px; }
-      .toast.success { background: var(--success); }
-      .toast.error { background: var(--danger); }
-      
+      .search-res { position: absolute; top: 100%; left: 0; width: 100%; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; margin-top: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+      .res-item { padding: 14px 20px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text-main); font-weight: 600; }
+
       @media (max-width: 768px) {
         body { padding: 0; overflow: hidden; }
         .header { padding: 5px 15px 0 15px; margin-bottom: 5px; height: 40px; }
         .venus-icon { width: 32px; height: 32px; }
         .title { font-size: 18px; }
-        .content-area { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; display: block; padding: 0 5px 120px 5px; height: 100%; }
-        .tab-page { height: auto; overflow: visible; }
+        .content-area { overflow-y: auto; display: block; padding: 0 5px 120px 5px; height: 100%; }
+        .tab-page { height: auto; }
         .split-view { flex-direction: column; gap: 15px; height: auto; }
-        .panel { border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .panel-left, .panel-right { width: 100%; height: auto; overflow: visible; flex-shrink: 0; padding: 20px; box-sizing: border-box; }
-        .panel-right { min-height: auto; }
-        h3 { font-size: 15px; margin-bottom: 10px; }
-        label { margin-bottom: 4px; font-size: 11px; }
+        .panel { border-radius: 20px; }
+        .panel-left, .panel-right { width: 100%; height: auto; padding: 20px; box-sizing: border-box; }
         input, select, .custom-select-trigger { padding: 10px; font-size: 13px; height: 40px; }
-        .qty-wrapper { height: 36px; }
-        .qty-btn { width: 36px; height: 100%; font-size: 16px; }
-        .qty-input { font-size: 15px; }
-        #txtTotal { font-size: 20px !important; margin-top: 0; }
-        .btn { padding: 12px; margin-top: 10px; font-size: 14px; }
-        .search-wrap { margin-bottom: 10px; }
-        
-        .grid-wrapper { padding: 0; }
-        
-        .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-        .charts-grid { grid-template-columns: 1fr; gap: 15px; }
-
         .nav { position: fixed; bottom: 20px; left: 20px; right: 20px; margin: 0; border-radius: 20px; background: var(--bg-panel); box-shadow: 0 10px 40px rgba(0,0,0,0.15); z-index: 1000; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; padding: 5px; height: 60px; border: 1px solid var(--border); }
-        .nav-indicator { display: block; position: absolute; top: 5px; left: 5px; height: calc(100% - 10px); width: calc((100% - 10px) / 4); background: var(--bg-app); border-radius: 16px; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 1; pointer-events: none; }
-        [data-theme="dark"] .nav-indicator { background: #334155; }
-        .nav-btn { background: transparent !important; box-shadow: none !important; flex-direction: column; gap: 4px; font-size: 10px; color: var(--text-sub); transition: color 0.2s; z-index: 10; width: 100%; }
-        .nav-btn svg { width: 22px; height: 22px; margin-bottom: 2px; transition: transform 0.2s; }
+        .nav-indicator { display: block; position: absolute; top: 5px; left: 5px; height: calc(100% - 10px); width: calc((100% - 10px) / 4); background: var(--bg-app); border-radius: 16px; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 1; }
+        .nav-btn { background: transparent !important; box-shadow: none !important; flex-direction: column; gap: 4px; font-size: 10px; color: var(--text-sub); width: 100%; }
+        .nav-btn svg { width: 22px; height: 22px; margin-bottom: 2px; }
         .nav-btn.active { color: var(--accent); }
         .nav-btn.active svg { transform: translateY(-2px); fill: var(--accent); }
-
-        .calendar-panel { padding: 12px; }
-        .calendar-grid { gap: 6px; }
-        .calendar-cell { min-height: 60px; }
+        .calendar-cell { min-height: 70px; }
       }
     </style>
 </head>
@@ -371,14 +290,7 @@
                 <path d="M10 50C10 50 30 40 50 40C70 40 90 50 90 50" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
                 <path d="M15 30C15 30 35 25 50 25C65 25 85 30 85 30" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
                 <path d="M15 70C15 70 35 75 50 75C65 75 85 70 85 70" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
-                <circle cx="70" cy="30" r="8" fill="rgba(0,0,0,0.1)"/>
-                <circle cx="30" cy="65" r="5" fill="rgba(0,0,0,0.1)"/>
-                <defs>
-                    <radialGradient id="venusGrad" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(30 30) rotate(0) scale(70)">
-                        <stop stop-color="#FFD700"/>
-                        <stop offset="1" stop-color="#FF8C00"/>
-                    </radialGradient>
-                </defs>
+                <defs><radialGradient id="venusGrad" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(30 30) rotate(0) scale(70)"><stop stop-color="#FFD700"/><stop offset="1" stop-color="#FF8C00"/></radialGradient></defs>
             </svg>
             <div class="title">Мастерская Венера</div>
         </div>
@@ -386,22 +298,10 @@
 
     <div class="nav">
         <div class="nav-indicator" id="navInd"></div>
-        <button class="nav-btn active" onclick="switchTab('income', 0)">
-            <svg viewBox="0 0 24 24"><path d="M21 18V19C21 20.1 20.1 21 19 21H5C3.89 21 3 20.1 3 19V5C3 3.9 3.89 3 5 3H19C20.1 3 21 3.9 21 5V6H12C10.89 6 10 6.9 10 8V16C10 17.1 10.89 18 12 18H21ZM12 16H22V8H12V16ZM16 13.5C15.17 13.5 14.5 12.83 14.5 12C14.5 11.17 15.17 10.5 16 10.5C16.83 10.5 17.5 11.17 17.5 12C17.5 12.83 16.83 13.5 16 13.5Z"/></svg>
-            МК
-        </button>
-        <button class="nav-btn" onclick="switchTab('expense', 1)">
-            <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
-            Расход
-        </button>
-        <button class="nav-btn" onclick="switchTab('calendar', 2)">
-            <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-1.99.9-1.99 2L3 20c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
-            Календарь
-        </button>
-        <button class="nav-btn" onclick="switchTab('analytics', 3)">
-            <svg viewBox="0 0 24 24"><path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM9 17H7V10H9V17ZM13 17H11V7H13V17ZM17 17H15V13H17V17Z"/></svg>
-            Инфо
-        </button>
+        <button class="nav-btn active" onclick="switchTab('income', 0)"><svg viewBox="0 0 24 24"><path d="M21 18V19C21 20.1 20.1 21 19 21H5C3.89 21 3 20.1 3 19V5C3 3.9 3.89 3 5 3H19C20.1 3 21 3.9 21 5V6H12C10.89 6 10 6.9 10 8V16C10 17.1 10.89 18 12 18H21ZM12 16H22V8H12V16ZM16 13.5C15.17 13.5 14.5 12.83 14.5 12C14.5 11.17 15.17 10.5 16 10.5C16.83 10.5 17.5 11.17 17.5 12C17.5 12.83 16.83 13.5 16 13.5Z"/></svg>МК</button>
+        <button class="nav-btn" onclick="switchTab('expense', 1)"><svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>Расход</button>
+        <button class="nav-btn" onclick="switchTab('calendar', 2)"><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-1.99.9-1.99 2L3 20c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>Календарь</button>
+        <button class="nav-btn" onclick="switchTab('analytics', 3)"><svg viewBox="0 0 24 24"><path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM9 17H7V10H9V17ZM13 17H11V7H13V17ZM17 17H15V13H17V17Z"/></svg>Инфо</button>
     </div>
 
     <div class="content-area">
@@ -409,85 +309,34 @@
             <div class="split-view">
                 <div class="panel panel-left">
                      <h3 id="formTitle">Добавить запись</h3>
-                    <div class="search-wrap">
-                        <label id="lblSearch">Название</label>
-                        <input type="text" id="inpName" placeholder="Поиск или новое..." autocomplete="off" oninput="showSearch(event); calcTotal()">
-                        <div class="search-res" id="searchRes"></div>
-                    </div>
+                    <div style="margin-bottom:15px; position:relative;"><label id="lblSearch">Название</label><input type="text" id="inpName" placeholder="Поиск или новое..." autocomplete="off" oninput="showSearch(event); calcTotal()"><div class="search-res" id="searchRes"></div></div>
                     <div style="display:flex; gap:10px; margin-bottom:10px;">
-                        <div style="flex:1">
-                           <label>Цена</label>
-                           <div class="qty-wrapper">
-                               <button class="qty-btn" onclick="modVal('inpPrice', -100)">−</button>
-                               <input type="number" id="inpPrice" class="qty-input" placeholder="0" oninput="calcTotal()">
-                               <button class="qty-btn" onclick="modVal('inpPrice', 100)">+</button>
-                           </div>
-                        </div>
-                        <div style="flex:1">
-                           <label>Кол-во</label>
-                           <div class="qty-wrapper">
-                               <button class="qty-btn" onclick="modVal('inpQty', -1)">−</button>
-                               <input type="number" id="inpQty" class="qty-input" value="1" oninput="calcTotal()">
-                               <button class="qty-btn" onclick="modVal('inpQty', 1)">+</button>
-                           </div>
-                        </div>
+                        <div style="flex:1"><label>Цена</label><div class="qty-wrapper"><button class="qty-btn" onclick="modVal('inpPrice', -100)">−</button><input type="number" id="inpPrice" class="qty-input" placeholder="0" oninput="calcTotal()"><button class="qty-btn" onclick="modVal('inpPrice', 100)">+</button></div></div>
+                        <div style="flex:1"><label>Кол-во</label><div class="qty-wrapper"><button class="qty-btn" onclick="modVal('inpQty', -1)">−</button><input type="number" id="inpQty" class="qty-input" value="1" oninput="calcTotal()"><button class="qty-btn" onclick="modVal('inpQty', 1)">+</button></div></div>
                     </div>
-                    <div style="text-align:center; margin-top:auto; margin-bottom:5px; padding: 10px; background: var(--input-bg); border-radius: 16px; border: 1px solid var(--border);">
+                    <div style="text-align:center; margin-top:auto; padding: 10px; background: var(--input-bg); border-radius: 16px; border: 1px solid var(--border);">
                         <span style="font-size:9px; color:var(--text-sub); text-transform:uppercase; font-weight:700; display:block; margin-bottom:2px;">Итого к записи</span>
                         <div id="txtTotal" style="font-size:24px; font-weight:800; color:var(--text-main)">0 ₽</div>
                     </div>
                     <button id="btnAdd" class="btn" onclick="submitEntry()">Добавить запись</button>
                 </div>
-
                 <div class="panel panel-right">
-                    <div class="table-header">
-                        <h3 id="tableTitle" style="margin:0">Последние записи</h3>
-                        <button class="btn-refresh" onclick="refreshTable(true)">Обновить</button>
-                    </div>
-                    <div class="grid-wrapper">
-                        <table id="mainTable">
-                            <thead>
-                                <tr>
-                                    <th>Дата</th>
-                                    <th>Название</th>
-                                    <th>Сумма</th>
-                                    <th>Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody"></tbody>
-                        </table>
-                        <div id="emptyMsg" style="padding:40px; text-align:center; color:var(--text-sub);">Нажмите "Обновить" для загрузки</div>
-                    </div>
+                    <div class="table-header"><h3 id="tableTitle" style="margin:0">Последние записи</h3><button class="btn" style="width:auto; padding:8px 16px; font-size:12px; margin:0;" onclick="refreshTable(true)">Обновить</button></div>
+                    <div class="grid-wrapper"><table id="mainTable"><thead><tr><th>Дата</th><th>Название</th><th>Сумма</th><th></th></tr></thead><tbody id="tableBody"></tbody></table><div id="emptyMsg" style="padding:40px; text-align:center; color:var(--text-sub);">Нажмите "Обновить"</div></div>
                 </div>
             </div>
         </div>
 
         <div id="calendarTab" class="tab-page">
             <div class="calendar-page">
-                <div class="calendar-panel" id="calendarPanel">
+                <div class="calendar-panel">
                     <div class="calendar-header">
-                        <div class="calendar-month-label">
-                            <div class="calendar-title" id="calendarTitle">Календарь</div>
-                            <span id="calendarHint">Сетка месяца</span>
-                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;"><div class="calendar-title" id="calendarTitle">Календарь</div></div>
                         <div class="calendar-actions">
-                            <div class="calendar-pickers">
-                                <div class="calendar-pill" onclick="openCalendarSheet('month')">
-                                    <span id="calendarMonthLabel">Месяц</span>
-                                    <span class="chevron">▼</span>
-                                </div>
-                                <div class="calendar-pill" onclick="openCalendarSheet('year')">
-                                    <span id="calendarYearLabel">2024</span>
-                                    <span class="chevron">▼</span>
-                                </div>
-                            </div>
-                            <div class="calendar-controls">
-                                <button class="calendar-btn" onclick="changeMonth(-1)">←</button>
-                                <button class="calendar-btn" onclick="changeMonth(1)">→</button>
-                            </div>
+                             <div class="calendar-controls"><button class="calendar-btn" onclick="changeYear(-1)">−</button><div class="year-pill" id="calendarYearLabel">2024</div><button class="calendar-btn" onclick="changeYear(1)">+</button></div>
+                             <div class="calendar-controls"><button class="calendar-btn" onclick="changeMonth(-1)">←</button><button class="calendar-btn" onclick="changeMonth(1)">→</button></div>
                         </div>
                     </div>
-                    <div class="calendar-sub" id="calendarSubtext">Понедельник — первый день недели</div>
                     <div class="calendar-weekdays" id="calendarWeekdays"></div>
                     <div class="calendar-grid" id="calendarGrid"></div>
                 </div>
@@ -496,1274 +345,395 @@
 
         <div id="analyticsTab" class="tab-page">
             <div class="analytics-container">
-                <div class="filters-row">
-                    <div class="custom-select-wrapper" onclick="openSheet('year')">
-                        <div class="custom-select-trigger"><span id="txtYear">Год</span></div>
-                    </div>
-                    <div class="custom-select-wrapper" onclick="openSheet('month')">
-                        <div class="custom-select-trigger"><span id="txtMonth">Месяц</span></div>
-                    </div>
+                 <div class="filters-row" style="display:flex;gap:15px;margin-bottom:25px;">
+                    <!-- ОБНОВЛЕНО: Используем openIOSPicker вместо openSheet -->
+                    <div class="custom-select-wrapper" onclick="openIOSPicker('year_filter', selYear, (v)=>{selYear=v; updateFilterUI(); loadAnalytics();})"><div class="custom-select-trigger"><span id="txtYear">Год</span></div></div>
+                    <div class="custom-select-wrapper" onclick="openIOSPicker('month_filter', selMonth, (v)=>{selMonth=v; updateFilterUI(); loadAnalytics();})"><div class="custom-select-trigger"><span id="txtMonth">Месяц</span></div></div>
                 </div>
-
                 <div class="kpi-grid">
                     <div class="kpi-card"><div class="kpi-title">ВЫРУЧКА</div><div class="kpi-val" style="color:var(--color-inc)" id="kpiInc">0</div><div id="trendInc"></div></div>
                     <div class="kpi-card"><div class="kpi-title">РАСХОДЫ</div><div class="kpi-val" style="color:var(--color-exp)" id="kpiExp">0</div><div id="trendExp"></div></div>
                     <div class="kpi-card"><div class="kpi-title">ПРИБЫЛЬ</div><div class="kpi-val" style="color:var(--color-prof)" id="kpiProf">0</div><div id="trendProf"></div></div>
                     <div class="kpi-card"><div class="kpi-title">ПОСЕТИТЕЛИ</div><div class="kpi-val" style="color:var(--color-vis)" id="kpiVis">0</div><div id="trendVis"></div></div>
                 </div>
-
-                <div class="charts-grid">
-                     <div class="chart-box"><div class="chart-head">Финансовый Пульс</div><div class="chart-canv"><canvas id="chartPulse"></canvas></div></div>
-                     <div class="chart-box" style="min-height:300px"><div class="chart-head">Топ Доходов</div><div id="listInc" class="prog-list"></div></div>
-                </div>
-                <div class="charts-grid">
-                     <div class="chart-box"><div class="chart-head">Посещаемость</div><div class="chart-canv"><canvas id="chartAttendance"></canvas></div></div>
-                     <div class="chart-box" style="min-height:300px"><div class="chart-head">Топ Расходов</div><div id="listExp" class="prog-list"></div></div>
-                </div>
+                <div class="charts-grid"><div class="chart-box"><div class="chart-head">Пульс</div><div class="chart-canv"><canvas id="chartPulse"></canvas></div></div><div class="chart-box" style="min-height:300px"><div class="chart-head">Топ Доходов</div><div id="listInc" class="prog-list"></div></div></div>
+                <div class="charts-grid"><div class="chart-box"><div class="chart-head">Посещаемость</div><div class="chart-canv"><canvas id="chartAttendance"></canvas></div></div><div class="chart-box" style="min-height:300px"><div class="chart-head">Топ Расходов</div><div id="listExp" class="prog-list"></div></div></div>
             </div>
         </div>
     </div>
 
-    <div id="editModal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 style="margin-bottom:20px; color:var(--text-main)">Редактирование</h3>
-            <input type="hidden" id="editId">
-            <label>Название</label><input type="text" id="editName" style="margin-bottom:15px;">
-            <div style="display:flex; gap:15px; margin-bottom:20px;">
-                <div style="flex:1"><label>Цена</label><input type="number" id="editPrice"></div>
-                <div style="flex:1"><label>Кол-во</label><input type="number" id="editQty"></div>
-            </div>
-            <div style="display:flex; gap:10px;">
-                <button class="btn" onclick="saveEdit()">Сохранить</button>
-                <button class="btn" style="background:var(--input-bg); color:var(--text-main); border:1px solid var(--border-strong);" onclick="document.getElementById('editModal').style.display='none'">Отмена</button>
-            </div>
-        </div>
-    </div>
-    <div id="deleteModal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 style="margin-bottom:15px; color:var(--text-main)">Удаление</h3>
-            <p style="color:var(--text-sub); margin-bottom:25px; font-size:14px; line-height:1.5;">Вы уверены, что хотите удалить эту запись? Это действие нельзя будет отменить.</p>
-            <div style="display:flex; gap:10px;">
-                <button class="btn" style="background:var(--danger); color:white; margin-top:0;" onclick="confirmDelete()">Удалить</button>
-                <button class="btn" style="background:var(--input-bg); color:var(--text-main); border:1px solid var(--border-strong); margin-top:0;" onclick="document.getElementById('deleteModal').style.display='none'">Отмена</button>
-            </div>
-        </div>
-    </div>
+    <!-- МОДАЛЬНЫЕ ОКНА -->
+    <div id="editModal" class="modal-overlay"><div class="modal-box"><h3 style="margin-bottom:20px;">Редактирование</h3><input type="hidden" id="editId"><input type="text" id="editName" style="margin-bottom:15px;"><div style="display:flex;gap:15px;margin-bottom:20px;"><input type="number" id="editPrice"><input type="number" id="editQty"></div><div style="display:flex;gap:10px;"><button class="btn" onclick="saveEdit()">Сохранить</button><button class="btn" style="background:var(--input-bg);color:var(--text-main);border:1px solid var(--border-strong);" onclick="document.getElementById('editModal').style.display='none'">Отмена</button></div></div></div>
+    <div id="deleteModal" class="modal-overlay"><div class="modal-box"><h3 style="margin-bottom:15px;">Удаление</h3><p style="color:var(--text-sub);margin-bottom:25px;">Вы уверены?</p><div style="display:flex;gap:10px;"><button class="btn" style="background:var(--danger);color:white;" onclick="confirmDelete()">Удалить</button><button class="btn" style="background:var(--input-bg);color:var(--text-main);border:1px solid var(--border-strong);" onclick="document.getElementById('deleteModal').style.display='none'">Отмена</button></div></div></div>
+    <!-- Удален старый sheetModal, так как теперь везде используется Picker -->
 
-    <div id="sheetModal" class="sheet-overlay" onclick="closeSheet(event)">
-        <div class="sheet-box" id="sheetContent">
-            <div class="sheet-header">
-                <span class="sheet-title" id="sheetTitle">Выбор</span>
-                <span class="sheet-close" onclick="document.getElementById('sheetModal').style.display='none'">Готово</span>
-            </div>
-            <div id="sheetList"></div>
-        </div>
-    </div>
-
-    <div id="bookingSheet" class="sheet-overlay" onclick="handleBookingSheetBackdrop(event)">
+    <!-- ЦЕНТРАЛЬНОЕ ОКНО СПИСКА БРОНИ -->
+    <div id="bookingSheet" class="sheet-overlay" onclick="if(event.target.id==='bookingSheet') closeBookingSheet()">
         <div class="sheet-box booking-sheet-box" id="bookingSheetBox">
             <div class="sheet-header booking-sheet-header">
-                <div class="booking-sheet-titles">
-                    <span class="sheet-title" id="bookingSheetTitle">Дата</span>
-                    <span class="booking-sheet-subtitle" id="bookingSheetSubtitle">Загрузка...</span>
-                </div>
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <button class="booking-add-btn" onclick="openAddBookingForm(activeBookingDate)">＋ Добавить бронь</button>
-                    <span class="sheet-close" onclick="closeBookingSheet()">Закрыть</span>
-                </div>
+                <div><span class="sheet-title" id="bookingSheetTitle">Дата</span><span style="display:block;font-size:12px;color:var(--text-sub)" id="bookingSheetSubtitle">...</span></div>
+                <span class="sheet-close" onclick="closeBookingSheet()">Закрыть</span>
             </div>
-            <div id="bookingSheetContent" class="booking-sheet-content">
-                <div class="booking-empty">Нет мастер-классов</div>
-            </div>
+            <div style="padding-bottom:15px;"><button class="btn" style="padding:10px;margin:0;" onclick="openAddBookingForm(activeBookingDate)">＋ Добавить бронь</button></div>
+            <div id="bookingSheetContent" class="booking-sheet-content"><div class="booking-empty">Нет данных</div></div>
         </div>
     </div>
 
-    <div id="addBookingSheet" class="sheet-overlay" onclick="handleAddBookingBackdrop(event)">
-        <div class="sheet-box booking-form-sheet" id="addBookingSheetBox">
-            <div class="sheet-header" style="align-items:center;">
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                    <span class="sheet-title" id="bookingFormTitle">Новая бронь</span>
-                    <span class="booking-sheet-subtitle" id="bookingFormSubtitle">Заполните детали</span>
-                </div>
-                <span class="sheet-close" onclick="closeAddBookingForm()">Отмена</span>
-            </div>
+    <!-- ФОРМА ДОБАВЛЕНИЯ БРОНИ -->
+    <div id="addBookingSheet" class="sheet-overlay" onclick="if(event.target.id==='addBookingSheet') closeAddBookingForm()">
+        <div class="sheet-box" style="max-height:85vh; border-radius:24px 24px 0 0;" id="addBookingSheetBox">
+            <div class="sheet-header"><span class="sheet-title" id="bookingFormTitle">Новая бронь</span><span class="sheet-close" onclick="closeAddBookingForm()">Отмена</span></div>
             <div class="booking-form-grid">
-                <div>
-                    <label for="bookingTitle">Название мастер-класса</label>
-                    <input id="bookingTitle" type="text" placeholder="Например, Свечи" oninput="updateBookingFormField('name', this.value)">
-                    <div class="field-error" id="bookingErrorName"></div>
-                </div>
+                <div><label>Название</label><input id="bookingTitle" type="text" oninput="updateBookingFormField('name', this.value)"><div class="field-error" id="bookingErrorName"></div></div>
                 <div class="booking-form-row">
                     <div>
-                        <label for="bookingDate">Дата</label>
-                        <input id="bookingDate" type="date" oninput="updateBookingFormField('date', this.value)">
+                        <label>Дата</label>
+                        <input id="bookingDate" type="text" readonly placeholder="Выберите" onclick="openIOSPicker('date', this.value, (v)=>updateBookingFormField('date',v))" style="cursor:pointer;caret-color:transparent;">
                         <div class="field-error" id="bookingErrorDate"></div>
                     </div>
                     <div>
-                        <label for="bookingStart">Время начала</label>
-                        <input id="bookingStart" type="time" oninput="updateBookingFormField('startTime', this.value)">
+                        <label>Начало</label>
+                        <input id="bookingStart" type="text" readonly placeholder="00:00" onclick="openIOSPicker('time', this.value, (v)=>updateBookingFormField('startTime',v))" style="cursor:pointer;caret-color:transparent;">
                         <div class="field-error" id="bookingErrorStartTime"></div>
                     </div>
                 </div>
                 <div class="booking-form-row">
-                    <div>
-                        <label for="bookingEnd">Время окончания</label>
-                        <input id="bookingEnd" type="time" oninput="updateBookingFormField('endTime', this.value)">
-                        <div class="field-error" id="bookingErrorEndTime"></div>
-                    </div>
-                    <div>
-                        <label for="bookingPrice">Цена за человека</label>
-                        <input id="bookingPrice" type="number" min="0" step="1" inputmode="decimal" oninput="updateBookingFormField('price', this.value)">
-                        <div class="field-error" id="bookingErrorPrice"></div>
-                    </div>
+                    <div><label>Окончание</label><input id="bookingEnd" type="text" readonly placeholder="00:00" onclick="openIOSPicker('time', this.value, (v)=>updateBookingFormField('endTime',v))" style="cursor:pointer;caret-color:transparent;"><div class="field-error" id="bookingErrorEndTime"></div></div>
+                    <div><label>Цена</label><input id="bookingPrice" type="number" oninput="updateBookingFormField('price', this.value)"><div class="field-error" id="bookingErrorPrice"></div></div>
                 </div>
                 <div class="booking-form-row">
-                    <div>
-                        <label for="bookingQty">Количество людей</label>
-                        <input id="bookingQty" type="number" min="1" step="1" inputmode="numeric" oninput="updateBookingFormField('qty', this.value)">
-                        <div class="field-error" id="bookingErrorQty"></div>
-                    </div>
-                    <div>
-                        <label for="bookingPrepayment">Предоплата (опционально)</label>
-                        <input id="bookingPrepayment" type="number" min="0" step="1" inputmode="decimal" oninput="updateBookingFormField('prepayment', this.value)">
-                        <div class="field-error" id="bookingErrorPrepayment"></div>
-                    </div>
+                    <div><label>Кол-во</label><input id="bookingQty" type="number" oninput="updateBookingFormField('qty', this.value)"><div class="field-error" id="bookingErrorQty"></div></div>
+                    <div><label>Предоплата</label><input id="bookingPrepayment" type="number" oninput="updateBookingFormField('prepayment', this.value)"></div>
                 </div>
-                <div class="booking-total">
-                    <span>Сумма</span>
-                    <span id="bookingTotalText">0 ₽</span>
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <button id="bookingFormSubmit" class="btn" onclick="submitBookingForm()">Сохранить бронь</button>
-                    <button class="btn secondary" onclick="closeAddBookingForm()">Закрыть</button>
-                </div>
+                <div class="booking-total"><span>Сумма</span><span id="bookingTotalText">0 ₽</span></div>
+                <button id="bookingFormSubmit" class="btn" onclick="submitBookingForm()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- iOS PICKER MODAL (УНИВЕРСАЛЬНЫЙ) -->
+    <div id="iosPickerModal" class="ios-picker-overlay" onclick="closeIOSPicker(event)">
+        <div class="ios-picker-container" onclick="event.stopPropagation()">
+            <div class="ios-tabs">
+                <button class="ios-tab-btn" onclick="closeIOSPicker(null)" style="color:#8e8e93">Отмена</button>
+                <span class="ios-tab-title" id="iosPickerTitle">Выбор</span>
+                <button class="ios-tab-btn" onclick="confirmIOSPicker()">Готово</button>
+            </div>
+            
+            <!-- Время (Часы : Минуты) -->
+            <div id="iosPickerTime" class="picker-area layout-time" style="display:none;">
+                <div class="picker-highlight"></div>
+                <div class="picker-col" id="col-hours"><div class="padder"></div><div class="padder"></div></div>
+                <div class="picker-col"><div style="display:flex;align-items:center;justify-content:center;height:100%;color:white;font-weight:700">:</div></div>
+                <div class="picker-col" id="col-minutes"><div class="padder"></div><div class="padder"></div></div>
+            </div>
+            
+            <!-- Дата (День Месяц Год) -->
+            <div id="iosPickerDate" class="picker-area layout-date" style="display:none;">
+                <div class="picker-highlight"></div>
+                <div class="picker-col" id="col-day"><div class="padder"></div><div class="padder"></div></div>
+                <div class="picker-col" id="col-month"><div class="padder"></div><div class="padder"></div></div>
+                <div class="picker-col" id="col-year"><div class="padder"></div><div class="padder"></div></div>
+            </div>
+
+            <!-- Generic Single Column (для Года или Месяца в фильтрах) -->
+            <div id="iosPickerGeneric" class="picker-area layout-single" style="display:none;">
+                <div class="picker-highlight"></div>
+                <div class="picker-col" id="col-generic" style="flex:1"><div class="padder"></div><div class="padder"></div></div>
             </div>
         </div>
     </div>
 
     <script>
-        // 👇 ВСТАВЬ СЮДА ССЫЛКУ
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbw45PpNVwZV2zsrARo3qiDB3WuHKG9Fe4zb1vXn_FVk3ElhyNGpAVzKeTEh1Og0ieGH/exec';
-        // 👆👆👆
+        // 👇 ВСТАВЬ СЮДА ССЫЛКУ ИЗ GOOGLE APPS SCRIPT
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycby_caHu1HxgSvMq0Qksti7FDUc55NTzLUOJxmCPcJHt8cZeUIkCJmDVeeGo7I2r-k1s/exec'; 
 
         const IS_GOOGLE = typeof google !== 'undefined' && google.script && google.script.run;
-        let currTab = 'income', dataCache = { income: null, expense: null }, config = { incomeItems: [], expenseItems: [] }, charts = {};
-        let stopAnimationRequest = false, activeRequests = 0, deleteTargetId = null, isAnalyticsLoaded = false, analyticsNeedsRefresh = true;
-        let selYear = new Date().getFullYear();
-        let selMonth = new Date().getMonth();
-        let availableYears = [];
-        const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        let currTab = 'income', dataCache = { income: null, expense: null }, config = { incomeItems:[], expenseItems:[] }, charts={};
+        let activeBookingDate = null, calendarYear = new Date().getFullYear(), calendarMonth = new Date().getMonth();
+        let selYear = new Date().getFullYear(), selMonth = 'all', availableYears = [];
+        const monthNames = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
         const weekDays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-        let calendarYear = new Date().getFullYear();
-        let calendarMonth = new Date().getMonth();
-        const calendarDataCache = {};
-        const calendarRequests = {};
-        let calendarSwipeStartX = null;
-        let calendarSwipeStartY = null;
-        const bookingsCache = {};
-        const bookingRequests = {};
-        let activeBookingDate = null;
-        let bookingTouchStart = null;
-        const BOOKING_STATUS = { planned: 'planned', done: 'done', canceled: 'canceled' };
-        const bookingFormState = {
-            isOpen: false,
-            isSubmitting: false,
-            mode: 'create',
-            bookingId: null,
-            originalDate: null,
-            fields: { name: '', date: '', startTime: '', endTime: '', price: '', qty: '1', prepayment: '' },
-            errors: {},
-            total: 0
-        };
 
-        function formatDateKeyLocal(dateObj) {
-            const y = dateObj.getFullYear();
-            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const d = String(dateObj.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
+        // --- iOS PICKER LOGIC (УНИВЕРСАЛЬНАЯ) ---
+        const iosPickerState = { activeType: null, callback: null, itemHeight: 44, genericMap: [] };
+        
+        function createPickerItem(text, value) { 
+            const d=document.createElement('div'); d.className='picker-item'; d.innerText=text; d.dataset.value=value; 
+            return d; 
         }
 
-        function formatHumanDate(dateStr) {
-            // YYYY-MM-DD → человекочитаемое «5 марта 2024»
-            if (!dateStr) return '';
-            const [y, m, d] = dateStr.split('-').map(Number);
-            const dateObj = new Date(y, (m || 1) - 1, d || 1);
-            return dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-        }
-
-        function convertTimeToMinutes(timeStr) {
-            if (!timeStr) return null;
-            const [h, m] = timeStr.split(':').map(Number);
-            if (isNaN(h) || isNaN(m)) return null;
-            return h * 60 + m;
-        }
-
-        function validateBookingForm(fields) {
-            const errors = {};
-            const price = Number(fields.price);
-            const qty = Number(fields.qty);
-            const prepaymentVal = fields.prepayment === '' ? null : Number(fields.prepayment);
-            const startMinutes = convertTimeToMinutes(fields.startTime);
-            const endMinutes = convertTimeToMinutes(fields.endTime);
-
-            if (!fields.date) errors.date = 'Выберите дату';
-            if (!isNaN(price) && price < 0) errors.price = 'Цена не может быть отрицательной';
-            if (isNaN(price)) errors.price = 'Введите цену';
-            if (isNaN(qty) || qty < 1) errors.qty = 'Минимум 1 человек';
-            if (startMinutes !== null && endMinutes !== null && startMinutes >= endMinutes) {
-                errors.endTime = 'Окончание позже старта';
-            }
-            if (prepaymentVal !== null) {
-                if (isNaN(prepaymentVal) || prepaymentVal < 0) {
-                    errors.prepayment = 'Некорректная предоплата';
-                }
-            }
-
-            // Бизнес-логика: итоговая сумма = цена за участника × количество человек
-            const total = Math.max(0, price || 0) * Math.max(0, qty || 0);
-            if (prepaymentVal !== null && prepaymentVal > total) {
-                errors.prepayment = 'Не больше суммы';
-            }
-
-            return { errors, total, isValid: Object.keys(errors).length === 0 };
-        }
-
-        function syncBookingFormUI(validationResult) {
-            const form = bookingFormState.fields;
-            const res = validationResult || validateBookingForm(form);
-            const isEditMode = bookingFormState.mode === 'edit';
-
-            const setError = (id, text) => {
-                const el = document.getElementById(id);
-                if (el) el.innerText = text || '';
-            };
-
-            const setVal = (id, val) => {
-                const el = document.getElementById(id);
-                if (el && el.value !== val) el.value = val;
-            };
-
-            setVal('bookingTitle', form.name || '');
-            setVal('bookingDate', form.date || '');
-            setVal('bookingStart', form.startTime || '');
-            setVal('bookingEnd', form.endTime || '');
-            setVal('bookingPrice', form.price || '');
-            setVal('bookingQty', form.qty || '');
-            setVal('bookingPrepayment', form.prepayment || '');
-
-            setError('bookingErrorName', '');
-            setError('bookingErrorDate', res.errors.date);
-            setError('bookingErrorStartTime', res.errors.startTime);
-            setError('bookingErrorEndTime', res.errors.endTime);
-            setError('bookingErrorPrice', res.errors.price);
-            setError('bookingErrorQty', res.errors.qty);
-            setError('bookingErrorPrepayment', res.errors.prepayment);
-
-            const totalEl = document.getElementById('bookingTotalText');
-            if (totalEl) totalEl.innerText = `${(res.total || 0).toLocaleString('ru-RU')} ₽`;
-
-            const btn = document.getElementById('bookingFormSubmit');
-            if (btn) {
-                btn.disabled = !res.isValid || bookingFormState.isSubmitting;
-                btn.innerText = bookingFormState.isSubmitting ? 'Сохраняем...' : (isEditMode ? 'Сохранить изменения' : 'Сохранить бронь');
-            }
-
-            const titleEl = document.getElementById('bookingFormTitle');
-            if (titleEl) {
-                titleEl.innerText = isEditMode ? 'Редактирование брони' : 'Новая бронь';
-            }
-
-            const subtitle = document.getElementById('bookingFormSubtitle');
-            if (subtitle) {
-                subtitle.innerText = isEditMode ? 'Обновите данные без изменения статуса' : 'Заполните детали';
-            }
-        }
-
-        function updateBookingFormField(field, value) {
-            bookingFormState.fields[field] = value;
-            const validation = validateBookingForm(bookingFormState.fields);
-            bookingFormState.errors = validation.errors;
-            bookingFormState.total = validation.total;
-            syncBookingFormUI(validation);
-        }
-
-        function openAddBookingForm(dateIso) {
-            if (!dateIso) {
-                showToast('Сначала выберите дату в календаре', true);
-                return;
-            }
-            bookingFormState.isOpen = true;
-            bookingFormState.isSubmitting = false;
-            bookingFormState.mode = 'create';
-            bookingFormState.bookingId = null;
-            bookingFormState.originalDate = dateIso;
-            bookingFormState.fields = { name: '', date: dateIso, startTime: '', endTime: '', price: '', qty: '1', prepayment: '' };
-            const validation = validateBookingForm(bookingFormState.fields);
-            bookingFormState.errors = validation.errors;
-            bookingFormState.total = validation.total;
-            const sheet = document.getElementById('addBookingSheet');
-            if (sheet) sheet.style.display = 'flex';
-            syncBookingFormUI(validation);
-        }
-
-        function closeAddBookingForm() {
-            bookingFormState.isOpen = false;
-            bookingFormState.isSubmitting = false;
-            bookingFormState.mode = 'create';
-            bookingFormState.bookingId = null;
-            bookingFormState.originalDate = null;
-            const sheet = document.getElementById('addBookingSheet');
-            if (sheet) sheet.style.display = 'none';
-        }
-
-        function handleAddBookingBackdrop(e) {
-            if (e.target.id === 'addBookingSheet') closeAddBookingForm();
-        }
-
-        function refreshBookingData(dateIso) {
-            if (!dateIso) return;
-            delete bookingsCache[dateIso];
-            if (activeBookingDate === dateIso) {
-                fetchBookingsForDate(dateIso);
-            }
-
-            const parsed = new Date(dateIso);
-            if (parsed instanceof Date && !isNaN(parsed.getTime())) {
-                const key = `${parsed.getFullYear()}-${parsed.getMonth()}`;
-                delete calendarDataCache[key];
-                if (parsed.getFullYear() === calendarYear && parsed.getMonth() === calendarMonth) {
-                    loadCalendarData();
-                }
+        function fillPickerColumn(colId, start, end, format='num', selectedVal=null, customList=null) {
+            const col = document.getElementById(colId);
+            col.innerHTML = '<div class="padder"></div>';
+            let targetScroll = 0;
+            
+            // Если передан кастомный список [{text, value}]
+            if (customList) {
+                iosPickerState.genericMap = customList; // Сохраняем для получения значения
+                customList.forEach((item, index) => {
+                     const div = createPickerItem(item.text, item.value);
+                     div.onclick = () => col.scrollTo({ top: div.offsetTop - iosPickerState.itemHeight, behavior: 'smooth' });
+                     col.appendChild(div);
+                     // Сравнение значений
+                     if (String(item.value) === String(selectedVal)) targetScroll = index * iosPickerState.itemHeight;
+                });
             } else {
-                loadCalendarData();
+                // Генерация чисел
+                for(let i=start; i<=end; i++){
+                    let text = i, val = i;
+                    if(format==='num') text=i.toString().padStart(2,'0');
+                    if(format==='months') { text=monthNames[i-1]; val=i; } // 1-12
+                    const item = createPickerItem(text, val);
+                    item.onclick = () => col.scrollTo({ top: item.offsetTop - iosPickerState.itemHeight, behavior: 'smooth' });
+                    col.appendChild(item);
+                    if(selectedVal!==null && parseInt(val)==parseInt(selectedVal)) targetScroll = (i - start) * iosPickerState.itemHeight;
+                }
             }
-        }
-
-        function submitBookingForm() {
-            const validation = validateBookingForm(bookingFormState.fields);
-            bookingFormState.errors = validation.errors;
-            bookingFormState.total = validation.total;
-            syncBookingFormUI(validation);
-            if (!validation.isValid) return;
-
-            bookingFormState.isSubmitting = true;
-            syncBookingFormUI(validation);
-
-            const payload = {
-                date: bookingFormState.fields.date,
-                name: (bookingFormState.fields.name || '').trim(),
-                startTime: bookingFormState.fields.startTime,
-                endTime: bookingFormState.fields.endTime,
-                price: Number(bookingFormState.fields.price) || 0,
-                participants: Number(bookingFormState.fields.qty) || 0,
-                prepayment: bookingFormState.fields.prepayment === '' ? 0 : Number(bookingFormState.fields.prepayment) || 0,
-                total: validation.total
+            
+            col.innerHTML += '<div class="padder"></div>';
+            
+            // Обработчик скролла и вибрация
+            col.onscroll = () => {
+                const idx = Math.round(col.scrollTop / iosPickerState.itemHeight);
+                col.querySelectorAll('.picker-item').forEach(el=>el.classList.remove('active'));
+                const items = col.querySelectorAll('.picker-item');
+                if(items[idx]) { 
+                    items[idx].classList.add('active'); 
+                    if(navigator.vibrate && col.dataset.last!=idx){ navigator.vibrate(5); col.dataset.last=idx; }
+                }
             };
-            const isEdit = bookingFormState.mode === 'edit';
-            const action = isEdit ? 'updateBooking' : 'addBooking';
-            if (isEdit) payload.id = bookingFormState.bookingId;
-
-            safeBackendCall(action, payload)
-                .then(() => {
-                    bookingFormState.isSubmitting = false;
-                    showToast(isEdit ? 'Изменения сохранены' : 'Бронь добавлена');
-                    const newDate = payload.date;
-                    const previousDate = bookingFormState.originalDate || newDate;
-                    closeAddBookingForm();
-                    // Обновляем оба дня, если дата перенесена
-                    const datesToRefresh = new Set([previousDate, newDate]);
-                    datesToRefresh.forEach(d => refreshBookingData(d));
-                })
-                .catch(() => {
-                    bookingFormState.isSubmitting = false;
-                    syncBookingFormUI(validation);
-                });
+            
+            // Установка начальной позиции
+            setTimeout(() => { col.scrollTop=targetScroll; col.dispatchEvent(new Event('scroll')); }, 10);
         }
 
-        function getCalendarCells(year, month) {
-            const firstDay = new Date(year, month, 1);
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const startOffset = (firstDay.getDay() + 6) % 7; // Monday-first offset
-            const totalCells = (startOffset + daysInMonth <= 35) ? 35 : 42;
+        function openIOSPicker(type, curVal, onConfirm) {
+            iosPickerState.activeType=type; iosPickerState.callback=onConfirm;
+            const modal = document.getElementById('iosPickerModal');
+            const title = document.getElementById('iosPickerTitle');
+            const tArea=document.getElementById('iosPickerTime');
+            const dArea=document.getElementById('iosPickerDate');
+            const gArea=document.getElementById('iosPickerGeneric');
+            
+            // Сброс видимости
+            tArea.style.display='none'; dArea.style.display='none'; gArea.style.display='none';
+            modal.style.display='flex';
 
-            const cells = [];
-            for (let i = 0; i < totalCells; i++) {
-                const dayIndex = i - startOffset + 1;
-                const calendarDate = new Date(year, month, dayIndex); // JS сам корректирует выход за пределы месяца
-                const inMonth = calendarDate.getMonth() === month;
-                const dayValue = calendarDate.getDate();
-
-                cells.push({
-                    day: dayValue,
-                    inMonth,
-                    iso: formatDateKeyLocal(calendarDate)
-                });
+            if(type==='time') {
+                title.innerText = 'Время';
+                tArea.style.display='flex';
+                let h=12, m=0;
+                if(curVal && curVal.includes(':')) [h,m]=curVal.split(':').map(Number);
+                fillPickerColumn('col-hours',0,23,'num',h); fillPickerColumn('col-minutes',0,59,'num',m);
+            } 
+            else if (type==='date') {
+                title.innerText = 'Дата';
+                dArea.style.display='flex';
+                let d=new Date().getDate(), m=new Date().getMonth()+1, y=new Date().getFullYear();
+                if(curVal) { const p=curVal.split('-'); if(p.length===3){ y=parseInt(p[0]); m=parseInt(p[1]); d=parseInt(p[2]); } }
+                fillPickerColumn('col-day',1,31,'num',d); fillPickerColumn('col-month',1,12,'months',m); fillPickerColumn('col-year',y-5,y+5,'num',y);
+            } 
+            else if (type==='year_filter') {
+                title.innerText = 'Выберите Год';
+                gArea.style.display='flex';
+                // Формируем список лет
+                const yearsList = availableYears.map(y => ({text: String(y), value: y}));
+                fillPickerColumn('col-generic', 0, 0, null, curVal, yearsList);
             }
-            return cells;
+            else if (type==='month_filter') {
+                title.innerText = 'Выберите Месяц';
+                gArea.style.display='flex';
+                // Формируем список: Весь год + 12 месяцев
+                const monthsList = [{text: 'Весь год', value: 'all'}];
+                monthNames.forEach((m, i) => monthsList.push({text: m, value: i}));
+                fillPickerColumn('col-generic', 0, 0, null, curVal, monthsList);
+            }
         }
 
-        function getCalendarKey(year = calendarYear, month = calendarMonth) {
-            return `${year}-${month}`;
+        function closeIOSPicker(e) { if(e && e.target.id!=='iosPickerModal') return; document.getElementById('iosPickerModal').style.display='none'; }
+
+        function confirmIOSPicker() {
+            const getVal = (id) => { 
+                const c=document.getElementById(id); 
+                const idx=Math.round(c.scrollTop/iosPickerState.itemHeight); 
+                const item = c.querySelectorAll('.picker-item')[idx];
+                return item ? item.dataset.value : null; 
+            };
+            
+            let res = "";
+            const type = iosPickerState.activeType;
+            
+            if(type==='time') res = `${String(getVal('col-hours')).padStart(2,'0')}:${String(getVal('col-minutes')).padStart(2,'0')}`;
+            else if (type==='date') res = `${getVal('col-year')}-${String(getVal('col-month')).padStart(2,'0')}-${String(getVal('col-day')).padStart(2,'0')}`;
+            else if (type==='year_filter' || type==='month_filter') res = getVal('col-generic');
+            
+            if(iosPickerState.callback) iosPickerState.callback(res);
+            closeIOSPicker({target:{id:'iosPickerModal'}});
         }
 
-        function mapCalendarDays(days) {
-            const map = new Map();
-            (days || []).forEach(day => {
-                if (day && day.date) map.set(day.date, day);
-            });
-            return map;
+        // --- FORM LOGIC ---
+        let bookingFormState = { fields: {name:'',date:'',startTime:'',endTime:'',price:'',qty:'1',prepayment:''}, errors: {} };
+        function updateBookingFormField(f, v) {
+            bookingFormState.fields[f]=v;
+            document.getElementById(f==='name'?'bookingTitle':(f==='date'?'bookingDate':(f==='startTime'?'bookingStart':(f==='endTime'?'bookingEnd':(f==='price'?'bookingPrice':(f==='qty'?'bookingQty':'bookingPrepayment')))))).value = v;
+            const p=Number(bookingFormState.fields.price)||0, q=Number(bookingFormState.fields.qty)||0;
+            document.getElementById('bookingTotalText').innerText = (p*q).toLocaleString() + ' ₽';
+        }
+        function openAddBookingForm(date) {
+            bookingFormState.fields = {name:'',date:date||'',startTime:'',endTime:'',price:'',qty:'1',prepayment:''};
+            updateBookingFormField('name',''); updateBookingFormField('date',date||'');
+            document.getElementById('addBookingSheet').style.display='flex';
+        }
+        function closeAddBookingForm() { document.getElementById('addBookingSheet').style.display='none'; }
+        function submitBookingForm() {
+            const f = bookingFormState.fields;
+            if(!f.date) { alert('Укажите дату'); return; }
+            const payload = { ...f, participants: f.qty, total: f.price*f.qty };
+            setLoading(true);
+            safeBackendCall('addBooking', payload).then(()=>{ setLoading(false); closeAddBookingForm(); refreshCalendarPeriod(); showToast('Бронь добавлена'); }).catch(()=>{setLoading(false);});
         }
 
-        function getBookingLevel(totalBookings) {
-            if (!totalBookings) return null;
-            if (totalBookings === 1) return 1;
-            if (totalBookings <= 3) return 2;
-            return 3;
-        }
-
-        function setCalendarLoading(active) {
-            const grid = document.getElementById('calendarGrid');
-            if (!grid) return;
-            grid.classList.toggle('is-loading', Boolean(active));
-        }
-
-        function renderWeekdays() {
-            const wrap = document.getElementById('calendarWeekdays');
-            if (!wrap) return;
-            if (wrap.childElementCount) return;
-            wrap.innerHTML = weekDays.map((d, idx) => {
-                const weekendClass = idx >= 5 ? 'weekend' : '';
-                return `<div class="${weekendClass}">${d}</div>`;
-            }).join('');
-        }
-
-        function renderCalendar(days = []) {
-            const grid = document.getElementById('calendarGrid');
-            if (!grid) return;
-            renderWeekdays();
-            const cells = getCalendarCells(calendarYear, calendarMonth);
-            const weeksCount = cells.length / 7;
-            const dataByDate = mapCalendarDays(days);
-
+        // --- CALENDAR LOGIC ---
+        function renderCalendar(days=[]) {
+            const grid=document.getElementById('calendarGrid'); grid.innerHTML='';
+            document.getElementById('calendarWeekdays').innerHTML = weekDays.map(d=>`<div>${d}</div>`).join('');
             document.getElementById('calendarTitle').innerText = `${monthNames[calendarMonth]} ${calendarYear}`;
             document.getElementById('calendarYearLabel').innerText = calendarYear;
-            document.getElementById('calendarMonthLabel').innerText = monthNames[calendarMonth];
-
-            const hint = document.getElementById('calendarHint');
-            if (hint) hint.innerText = `${weeksCount} нед. • ${dataByDate.size} дн. с данными`;
-            const sub = document.getElementById('calendarSubtext');
-            if (sub) {
-                const first = new Date(calendarYear, calendarMonth, 1);
-                const weekDay = weekDays[(first.getDay() + 6) % 7];
-                sub.innerText = `Начало: ${weekDay}, ${first.toLocaleDateString('ru-RU')}`;
+            const firstDay = new Date(calendarYear, calendarMonth, 1).getDay(); // 0=Sun
+            const offset = (firstDay===0 ? 6 : firstDay-1);
+            const daysInMonth = new Date(calendarYear, calendarMonth+1, 0).getDate();
+            const map = {}; days.forEach(d=>map[d.date]=d);
+            for(let i=0; i<offset; i++) grid.innerHTML+=`<div class="calendar-cell outside"></div>`;
+            for(let i=1; i<=daysInMonth; i++) {
+                const iso = `${calendarYear}-${String(calendarMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                const dData = map[iso];
+                const level = dData ? (dData.totalBookings>3?3:(dData.totalBookings>0?2:0)) : 0;
+                grid.innerHTML+=`<div class="calendar-cell clickable" ${level?`data-level="${level}"`:''} onclick="openBookingSheet('${iso}')"><span class="date-num">${i}</span></div>`;
             }
-
-            // Присваиваем цветовую насыщенность только дням, для которых пришли данные backend
-            grid.innerHTML = cells.map((c, idx) => {
-                const dayData = dataByDate.get(c.iso);
-                const level = getBookingLevel(dayData?.totalBookings);
-                const levelAttr = level ? ` data-level="${level}"` : '';
-                const isWeekend = idx % 7 >= 5;
-                const clickableClass = `${c.inMonth ? 'clickable' : 'outside'} ${isWeekend ? 'weekend' : ''}`.trim();
-                const dataAttrs = c.inMonth ? ` data-date="${c.iso}"` : '';
-                return `<div class="calendar-cell ${clickableClass}"${levelAttr}${dataAttrs}><span class="date-num">${c.day}</span></div>`;
-            }).join('');
-
-            const nodes = Array.from(grid.querySelectorAll('.calendar-cell'));
-            nodes.forEach((node, idx) => {
-                const cellData = cells[idx];
-                if (!cellData?.inMonth) return;
-                node.addEventListener('click', () => onCalendarDayClick(cellData));
-            });
         }
-
         function loadCalendarData() {
-            const targetYear = calendarYear;
-            const targetMonth = calendarMonth;
-            const key = getCalendarKey(targetYear, targetMonth);
-            const cached = calendarDataCache[key];
-            if (cached) {
-                renderCalendar(cached);
-                return Promise.resolve(cached);
-            }
-            if (calendarRequests[key]) return calendarRequests[key];
-
-            setCalendarLoading(true);
-            calendarRequests[key] = safeBackendCall('getCalendarData', { year: targetYear, month: targetMonth })
-                .then(res => {
-                    setCalendarLoading(false);
-                    delete calendarRequests[key];
-                    calendarDataCache[key] = res.days || [];
-                    if (getCalendarKey() === key) {
-                        renderCalendar(calendarDataCache[key]);
-                    }
-                    return res;
-                })
-                .catch(() => {
-                    setCalendarLoading(false);
-                    delete calendarRequests[key];
-                });
-
-            return calendarRequests[key];
+            safeBackendCall('getCalendarData', {year:calendarYear, month:calendarMonth}).then(res=>{ renderCalendar(res.days); });
         }
-
-        function setBookingSubtitle(text) {
-            const subtitle = document.getElementById('bookingSheetSubtitle');
-            if (subtitle) subtitle.innerText = text;
-        }
-
-        function formatTimeRange(start, end) {
-            if (start && end) return `${start} — ${end}`;
-            return start || end || '—';
-        }
-
-        function getBookingStatusLabel(status) {
-            const map = {
-                [BOOKING_STATUS.planned]: 'Запланировано',
-                [BOOKING_STATUS.done]: 'Отработан',
-                [BOOKING_STATUS.canceled]: 'Отменён'
-            };
-            return map[status] || status || BOOKING_STATUS.planned;
-        }
-
-        function isFinalBookingStatus(status) {
-            return status === BOOKING_STATUS.done || status === BOOKING_STATUS.canceled;
-        }
-
-        function lockBookingCard(id, isLoading, loadingText = '') {
-            const card = document.querySelector(`.booking-card[data-booking-id="${id}"]`);
-            if (!card) return;
-
-            card.classList.toggle('is-loading', Boolean(isLoading));
-            const buttons = card.querySelectorAll('.booking-btn');
-
-            buttons.forEach(btn => {
-                if (isLoading) {
-                    if (!btn.dataset.prevText) btn.dataset.prevText = btn.innerText;
-                    if (loadingText) btn.innerText = loadingText;
-                    btn.disabled = true;
-                } else {
-                    const locked = card.dataset.status !== BOOKING_STATUS.planned || btn.dataset.locked === '1';
-                    btn.disabled = locked;
-                    if (btn.dataset.prevText) {
-                        btn.innerText = btn.dataset.prevText;
-                        delete btn.dataset.prevText;
-                    }
-                }
+        function changeMonth(d) { calendarMonth+=d; if(calendarMonth>11){calendarMonth=0;calendarYear++;} if(calendarMonth<0){calendarMonth=11;calendarYear--;} renderCalendar(); loadCalendarData(); }
+        function changeYear(d) { calendarYear+=d; renderCalendar(); loadCalendarData(); }
+        function refreshCalendarPeriod() { loadCalendarData(); }
+        function openBookingSheet(iso) {
+            activeBookingDate=iso;
+            document.getElementById('bookingSheetTitle').innerText = iso.split('-').reverse().join('.');
+            document.getElementById('bookingSheet').style.display='flex';
+            document.getElementById('bookingSheetContent').innerHTML='<div class="booking-empty">Загрузка...</div>';
+            safeBackendCall('getBookingsByDate', {date:iso}).then(res=>{
+                 const c = document.getElementById('bookingSheetContent'); c.innerHTML='';
+                 if(!res.bookings.length) { c.innerHTML='<div class="booking-empty">Нет записей</div>'; return; }
+                 res.bookings.forEach(b=>{
+                     c.innerHTML+=`<div class="booking-card"><div style="display:flex;justify-content:space-between"><span style="font-weight:800">${b.name}</span><span class="booking-status status-${b.status}">${b.status}</span></div><div style="font-size:13px;color:var(--text-sub)">${b.startTime}-${b.endTime} • ${b.qty} чел • ${b.total}₽</div><button class="btn" style="padding:10px;margin:0" onclick="changeStatus('${b.id}','${b.status==='planned'?'done':'planned'}')">Изменить статус</button></div>`;
+                 });
             });
         }
-
-        function renderBookingCards(dateIso, bookings = []) {
-            const content = document.getElementById('bookingSheetContent');
-            if (!content) return;
-            const total = bookings.length;
-            setBookingSubtitle(total ? `${total} МК на выбранную дату` : 'Нет мастер-классов');
-
-            if (!total) {
-                content.innerHTML = '<div class="booking-empty">Нет мастер-классов</div>';
-                return;
-            }
-
-            content.innerHTML = bookings.map(b => {
-                const status = b.status || BOOKING_STATUS.planned;
-                const statusClass = `status-${status}`;
-                const timeText = formatTimeRange(b.startTime, b.endTime);
-                const qtyText = b.qty ? `${b.qty} чел.` : '—';
-                const totalText = b.total ? `${Number(b.total).toLocaleString()} ₽` : '—';
-                const isFinal = isFinalBookingStatus(status);
-                const lockedAttr = isFinal ? 'disabled data-locked="1"' : '';
-                const cardClasses = `booking-card ${statusClass} ${isFinal ? 'is-final' : ''}`;
-
-                return `<div class="${cardClasses}" data-booking-id="${b.id || ''}" data-status="${status}">
-                    <div class="booking-card-header">
-                        <div class="booking-title">${b.name || 'Без названия'}</div>
-                        <div class="booking-status ${statusClass}">${getBookingStatusLabel(status)}</div>
-                    </div>
-                    <div class="booking-meta">
-                        <span>🕒 ${timeText}</span>
-                        <span>👥 ${qtyText}</span>
-                        <span>💰 ${totalText}</span>
-                    </div>
-                    <div class="booking-card-actions">
-                        <button class="booking-btn edit" ${lockedAttr} onclick="onBookingEdit('${b.id || ''}')">✏️ Редактировать</button>
-                        <button class="booking-btn done" ${lockedAttr} onclick="onBookingMarkDone('${b.id || ''}')">✅ Отработан</button>
-                        <button class="booking-btn cancel" ${lockedAttr} onclick="onBookingCancel('${b.id || ''}')">❌ Отмена</button>
-                    </div>
-                </div>`;
-            }).join('');
-        }
-
-        function openBookingSheet(dateIso) {
-            const sheet = document.getElementById('bookingSheet');
-            const title = document.getElementById('bookingSheetTitle');
-            const content = document.getElementById('bookingSheetContent');
-
-            activeBookingDate = dateIso;
-            if (title) title.innerText = formatHumanDate(dateIso);
-            if (content) content.innerHTML = '<div class="booking-empty">Загружаем...</div>';
-            setBookingSubtitle('Подготавливаем список');
-            if (sheet) sheet.style.display = 'flex';
-        }
-
-        function closeBookingSheet() {
-            activeBookingDate = null;
-            const sheet = document.getElementById('bookingSheet');
-            if (sheet) sheet.style.display = 'none';
-        }
-
-        function handleBookingSheetBackdrop(e) {
-            if (e.target.id === 'bookingSheet') closeBookingSheet();
-        }
-
-        function initBookingSheetGestures() {
-            const sheetBox = document.getElementById('bookingSheetBox');
-            if (!sheetBox) return;
-
-            sheetBox.addEventListener('touchstart', e => { bookingTouchStart = e.touches[0].clientY; });
-            sheetBox.addEventListener('touchmove', e => {
-                if (bookingTouchStart === null) return;
-                const diff = e.touches[0].clientY - bookingTouchStart;
-                if (diff > 120) { closeBookingSheet(); bookingTouchStart = null; }
-            });
-            sheetBox.addEventListener('touchend', () => { bookingTouchStart = null; });
-        }
-
-        function fetchBookingsForDate(dateIso) {
-            if (!dateIso) return Promise.resolve([]);
-            if (bookingsCache[dateIso]) {
-                renderBookingCards(dateIso, bookingsCache[dateIso]);
-                return Promise.resolve(bookingsCache[dateIso]);
-            }
-            if (bookingRequests[dateIso]) return bookingRequests[dateIso];
-
-            bookingRequests[dateIso] = safeBackendCall('getBookingsByDate', { date: dateIso })
-                .then(res => {
-                    delete bookingRequests[dateIso];
-                    bookingsCache[dateIso] = res.bookings || [];
-                    if (activeBookingDate === dateIso) {
-                        renderBookingCards(dateIso, bookingsCache[dateIso]);
-                    }
-                    return res;
-                })
-                .catch(() => {
-                    delete bookingRequests[dateIso];
-                    setBookingSubtitle('Не удалось загрузить список');
-                });
-
-            return bookingRequests[dateIso];
-        }
-
-        function refreshBookingsAfterStatus(dateIso) {
-            if (!dateIso) return;
-            delete bookingsCache[dateIso];
-            fetchBookingsForDate(dateIso);
-            invalidateCalendarCache(dateIso);
-        }
-
-        function openEditBookingForm(id) {
-            if (!id) return;
-            const dateIso = activeBookingDate;
-            const dayBookings = bookingsCache[dateIso] || [];
-            const target = dayBookings.find(b => b.id === id);
-
-            if (!target) {
-                showToast('Бронь не найдена', true);
-                return;
-            }
-
-            if (isFinalBookingStatus(target.status)) {
-                showToast('Нельзя редактировать завершённые/отменённые записи', true);
-                return;
-            }
-
-            bookingFormState.mode = 'edit';
-            bookingFormState.bookingId = id;
-            bookingFormState.originalDate = dateIso || target.date;
-            bookingFormState.fields = {
-                name: target.name || '',
-                date: target.date || dateIso,
-                startTime: target.startTime || '',
-                endTime: target.endTime || '',
-                price: target.price ?? '',
-                qty: target.qty ?? '',
-                prepayment: target.prepayment ?? ''
-            };
-
-            const validation = validateBookingForm(bookingFormState.fields);
-            bookingFormState.errors = validation.errors;
-            bookingFormState.total = validation.total;
-            bookingFormState.isSubmitting = false;
-
-            const sheet = document.getElementById('addBookingSheet');
-            if (sheet) sheet.style.display = 'flex';
-            syncBookingFormUI(validation);
-        }
-
-        function invalidateCalendarCache(dateIso) {
-            const parts = String(dateIso || '').split('-').map(Number);
-            if (parts.length < 2) return;
-            const [y, m] = parts;
-            if (!y || !m) return;
-            const key = getCalendarKey(y, m - 1);
-            delete calendarDataCache[key];
-            if (getCalendarKey() === key) {
-                loadCalendarData();
-            }
-        }
-
-        function onCalendarDayClick(cellData) {
-            if (!cellData || !cellData.inMonth) return;
-            openBookingSheet(cellData.iso);
-            fetchBookingsForDate(cellData.iso);
-        }
-
-        function onBookingEdit(id) { openEditBookingForm(id); }
-        function onBookingMarkDone(id) { changeBookingStatusUI(id, BOOKING_STATUS.done); }
-        function onBookingCancel(id) { changeBookingStatusUI(id, BOOKING_STATUS.canceled); }
-
-        function changeBookingStatusUI(id, status) {
-            if (!id) return;
-            const dateIso = activeBookingDate;
-            const dayBookings = bookingsCache[dateIso] || [];
-            const target = dayBookings.find(b => b.id === id);
-
-            if (target && isFinalBookingStatus(target.status)) {
-                showToast('Статус уже обновлён');
-                return;
-            }
-
-            lockBookingCard(id, true, 'Обновляем...');
-
-            safeBackendCall('changeBookingStatus', { id, status })
-                .then(() => {
-                    showToast('Статус обновлён');
-                    refreshBookingsAfterStatus(dateIso);
-                })
-                .catch(() => {
-                    lockBookingCard(id, false);
-                });
-        }
-
-        function refreshCalendarPeriod() {
-            // Переотрисовываем сетку сразу, а данные подмешиваем после загрузки
-            renderCalendar(calendarDataCache[getCalendarKey()] || []);
-            loadCalendarData();
-        }
-
-        function setCalendarMonth(monthIndex) {
-            if (typeof monthIndex !== 'number') return;
-            calendarMonth = Math.min(11, Math.max(0, monthIndex));
-            refreshCalendarPeriod();
-        }
-
-        function changeMonth(delta) {
-            calendarMonth += delta;
-            if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
-            if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
-            refreshCalendarPeriod();
-        }
-
-        function changeYear(delta) {
-            calendarYear += delta;
-            refreshCalendarPeriod();
-        }
-
-        function initCalendarGestures() {
-            const panel = document.getElementById('calendarPanel');
-            if (!panel) return;
-
-            panel.addEventListener('touchstart', e => {
-                const touch = e.touches[0];
-                calendarSwipeStartX = touch.clientX;
-                calendarSwipeStartY = touch.clientY;
-                e.stopPropagation();
-            });
-
-            panel.addEventListener('touchend', e => {
-                if (calendarSwipeStartX === null || calendarSwipeStartY === null) return;
-                const touch = e.changedTouches[0];
-                const dx = touch.clientX - calendarSwipeStartX;
-                const dy = touch.clientY - calendarSwipeStartY;
-                const threshold = 50;
-
-                if (Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy)) {
-                    if (dx < 0) changeMonth(1); else changeMonth(-1);
-                }
-
-                calendarSwipeStartX = null;
-                calendarSwipeStartY = null;
-                e.stopPropagation();
-            });
-        }
-
-        function getCalendarYearsRange() {
-            const current = new Date().getFullYear();
-            const yearsSet = new Set(availableYears || []);
-            for (let y = current - 3; y <= current + 3; y++) yearsSet.add(y);
-            return Array.from(yearsSet).sort((a, b) => a - b);
-        }
-
-        function openCalendarSheet(type) {
-            const sheet = document.getElementById('sheetModal');
-            const list = document.getElementById('sheetList');
-            const title = document.getElementById('sheetTitle');
-            if (!sheet || !list || !title) return;
-
-            list.innerHTML = '';
-            sheet.style.display = 'flex';
-
-            if (type === 'year') {
-                title.innerText = 'Выберите год';
-                getCalendarYearsRange().forEach(y => {
-                    const div = document.createElement('div');
-                    div.className = `sheet-item ${y === calendarYear ? 'selected' : ''}`;
-                    div.innerText = y;
-                    div.onclick = () => { calendarYear = y; refreshCalendarPeriod(); sheet.style.display = 'none'; };
-                    list.appendChild(div);
-                });
-            } else {
-                title.innerText = 'Выберите месяц';
-                monthNames.forEach((m, i) => {
-                    const div = document.createElement('div');
-                    div.className = `sheet-item ${i === calendarMonth ? 'selected' : ''}`;
-                    div.innerText = m;
-                    div.onclick = () => { setCalendarMonth(i); sheet.style.display = 'none'; };
-                    list.appendChild(div);
-                });
-            }
-        }
-        
-        // --- ЛОГИКА СВАЙПОВ + ЗАЩИТА ОТ ГОРИЗОНТАЛЬНОЙ ПРОКРУТКИ ---
-        const TABS_ORDER = ['income', 'expense', 'calendar', 'analytics'];
-        let touchStartX = 0;
-        let touchStartY = 0; 
-        let touchEndX = 0;
-        let touchEndY = 0;
-        let isSwipeIgnored = false; // Флаг для блокировки свайпа страницы
-
-        document.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-            
-            // ПРОВЕРКА: Если мы касаемся таблицы (класс .grid-wrapper) или графика,
-            // мы блокируем свайп страницы, чтобы дать возможность прокрутить контент.
-            if (e.target.closest('.grid-wrapper') || e.target.closest('.chart-canv')) {
-                isSwipeIgnored = true;
-            } else {
-                isSwipeIgnored = false;
-            }
-        }, false);
-
-        document.addEventListener('touchend', e => {
-            touchEndX = e.changedTouches[0].screenX;
-            touchEndY = e.changedTouches[0].screenY;
-            
-            if (!isSwipeIgnored) {
-                handleSwipe();
-            }
-        }, false);
-
-        function handleSwipe() {
-            const threshold = 100; // Порог свайпа
-            const xDiff = touchEndX - touchStartX;
-            const yDiff = touchEndY - touchStartY;
-            
-            // 1. Длина
-            if (Math.abs(xDiff) < threshold) return;
-            // 2. Вертикальность (если скроллим вниз - отмена)
-            if (Math.abs(yDiff) > Math.abs(xDiff)) return;
-
-            let currentIdx = TABS_ORDER.indexOf(currTab);
-            if (currentIdx === -1) currentIdx = 0;
-
-            if (xDiff < 0) {
-                // Свайп влево (СЛЕДУЮЩАЯ)
-                let nextIdx = currentIdx + 1;
-                if (nextIdx >= TABS_ORDER.length) nextIdx = 0; 
-                switchTab(TABS_ORDER[nextIdx], nextIdx, 'next');
-            } else {
-                // Свайп вправо (ПРЕДЫДУЩАЯ)
-                let prevIdx = currentIdx - 1;
-                if (prevIdx < 0) prevIdx = TABS_ORDER.length - 1; 
-                switchTab(TABS_ORDER[prevIdx], prevIdx, 'prev');
-            }
-        }
-        
-        // --- ВИБРАЦИЯ (ЭФФЕКТ КНИГИ / FADING IMPULSE) ---
-        function triggerBookHaptic() {
-            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-                // 1. Сильный импульс (начало перелистывания)
-                window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
-                
-                // 2. Слабый импульс через 80мс (страница "легла" / затухание)
-                setTimeout(() => {
-                    window.Telegram.WebApp.HapticFeedback.impactOccurred('soft');
-                }, 80);
-            } else if (navigator.vibrate) {
-                // Аналог для браузера: [сильный, пауза, слабый]
-                navigator.vibrate([20, 50, 10]); 
-            }
-        }
-        // ---------------------------------------------
-
-        async function runBackend(action, payload = {}) {
-            if (IS_GOOGLE) {
-                return new Promise((resolve, reject) => {
-                    if(action === 'getInitialConfig') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getInitialConfig();
-                    else if(action === 'saveTransaction') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).saveTransaction(payload);
-                    else if(action === 'getTableData') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getTableData(payload.type);
-                    else if(action === 'editTransaction') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).editTransaction(payload);
-                    else if(action === 'deleteTransaction') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).deleteTransaction(payload);
-                    else if(action === 'getAnalyticsData') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAnalyticsData(payload.year, payload.monthIdx);
-                    else if(action === 'getCalendarData') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getCalendarData(payload.year, payload.month);
-                    else if(action === 'getBookingsByDate') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBookingsByDate(payload.date);
-                    else if(action === 'addBooking') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).addBooking(payload);
-                    else if(action === 'updateBooking') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).updateBooking(payload.id, payload);
-                    else if(action === 'changeBookingStatus') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).changeBookingStatus(payload.id, payload.status);
-                    else reject("Unknown Func");
-                });
-            } else {
-                if(GAS_URL.includes("ВАШ_")) { alert("ОШИБКА: Вставь ссылку в index.html!"); throw new Error("No URL"); }
-                payload.action = action;
-                try {
-                    const res = await fetch(GAS_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "text/plain;charset=utf-8" },
-                        body: JSON.stringify(payload)
-                    });
-                    const text = await res.text();
-                    try { return JSON.parse(text); } catch(e) { throw new Error("Server Error: " + text); }
-                } catch(e) { throw e; }
-            }
-        }
-
-        async function safeBackendCall(action, payload = {}) {
-            try {
-                const res = await runBackend(action, payload);
-                if (!res || res.success === false) {
-                    console.error(`[${action}] backend error`, res);
-                    showToast((res && res.message) ? res.message : 'Ошибка запроса', true);
-                    throw new Error((res && res.message) || 'Backend error');
-                }
-                return res;
-            } catch (err) {
-                console.error(`[${action}] request failed`, err);
-                showToast('Ошибка: ' + (err.message || err), true);
-                throw err;
-            }
-        }
-
-        window.onload = function() {
-            if(window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.expand();
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.body.setAttribute('data-theme', savedTheme);
-            setLoading(true);
-            
-            safeBackendCall('getInitialConfig').then(res => {
-                config = res;
-                availableYears = res.years;
-                updateFilterUI();
-                refreshTable(true);
-                loadAnalytics(true);
-                setLoading(false);
-            }).catch(() => { setLoading(false); });
-            const v = document.getElementById('venus');
-            v.addEventListener('animationiteration', () => { if (stopAnimationRequest) { v.classList.remove('spinning'); stopAnimationRequest = false; } });
-            calcTotal();
-            renderCalendar(calendarDataCache[getCalendarKey()] || []);
-            initCalendarGestures();
-            initBookingSheetGestures();
-        };
-
-        function setLoading(active) {
-            const v = document.getElementById('venus');
-            if (active) { activeRequests++; stopAnimationRequest = false; v.classList.add('spinning'); } 
-            else { activeRequests--; if (activeRequests < 0) activeRequests = 0; if (activeRequests === 0) stopAnimationRequest = true; }
-        }
-
-        function toggleTheme(event) {
-            const isDark = document.body.getAttribute('data-theme') === 'dark';
-            const newTheme = isDark ? 'light' : 'dark';
-            
-            if (!document.startViewTransition) { setTheme(newTheme); return; }
-
-            const rect = document.getElementById('venus').getBoundingClientRect();
-            const x = rect.left + rect.width / 2;
-            const y = rect.top + rect.height / 2;
-            const endRadius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-            const transition = document.startViewTransition(() => {
-                setTheme(newTheme);
-            });
-            transition.ready.then(() => {
-                const clipPath = [
-                    `circle(0px at ${x}px ${y}px)`,
-                    `circle(${endRadius}px at ${x}px ${y}px)`
-                ];
-                document.documentElement.animate(
-                   { clipPath: clipPath },
-                   {
-                        duration: 700,
-                        easing: 'cubic-bezier(0.645, 0.045, 0.355, 1)',
-                        pseudoElement: '::view-transition-new(root)'
-                    }
-                );
-            });
-        }
-        function setTheme(theme) { document.body.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); if(currTab === 'analytics') loadAnalytics(); }
-
-        function switchTab(t, idx, direction = 'fade') {
-            if (currTab === t && !direction) return;
-
-            currTab = t;
-            
-            // Включаем "книжную" вибрацию
-            triggerBookHaptic();
-
-            const btns = document.querySelectorAll('.nav-btn');
-            btns.forEach(b => b.classList.remove('active'));
-            if(typeof idx === 'undefined') {
-                idx = TABS_ORDER.indexOf(t);
-                if(idx === -1) idx = 0;
-            }
-            if(btns[idx]) btns[idx].classList.add('active');
-            const ind = document.getElementById('navInd');
-            if(ind) ind.style.transform = `translateX(${idx * 100}%)`;
-
-            const splitPage = document.getElementById('splitTab');
-            const calendarPage = document.getElementById('calendarTab');
-            const analyticsPage = document.getElementById('analyticsTab');
-            let activePage;
-
-            document.querySelectorAll('.tab-page').forEach(p => {
-                p.classList.remove('active', 'anim-next', 'anim-prev', 'anim-fade');
-            });
-
-            if(t === 'analytics') {
-                activePage = analyticsPage;
-                if(analyticsNeedsRefresh || !isAnalyticsLoaded) loadAnalytics();
-            } else if (t === 'calendar') {
-                activePage = calendarPage;
-                refreshCalendarPeriod();
-            } else {
-                activePage = splitPage;
-                updateUIForTab(t);
-                if (dataCache[t]) renderTableFromCache(dataCache[t]);
-                else { document.getElementById('tableBody').innerHTML = ''; document.getElementById('emptyMsg').style.display = 'block'; refreshTable(true); }
-            }
-
-            activePage.classList.add('active');
-            
-            void activePage.offsetWidth; 
-
-            if (direction === 'next') {
-                activePage.classList.add('anim-next');
-            } else if (direction === 'prev') {
-                activePage.classList.add('anim-prev');
-            } else {
-                activePage.classList.add('anim-fade');
-            }
-        }
-
-        function updateUIForTab(t) {
-            const isInc = t === 'income';
-            document.getElementById('formTitle').innerText = isInc ? 'Добавить Мастер Класс' : 'Добавить Расход';
-            document.getElementById('lblSearch').innerText = isInc ? 'Название МК' : 'Наименование';
-            document.getElementById('tableTitle').innerText = isInc ? 'Доходы (Последние записи)' : 'Расходы (Последние записи)';
-            document.getElementById('inpName').value = ''; document.getElementById('inpPrice').value = ''; document.getElementById('inpQty').value = 1;
-            calcTotal();
-        }
-
-        function updateFilterUI() {
-            document.getElementById('txtYear').innerText = selYear;
-            document.getElementById('txtMonth').innerText = (selMonth === 'all') ? 'Весь год' : monthNames[selMonth];
-        }
-
-        function openSheet(type) {
-            const sheet = document.getElementById('sheetModal');
-            const list = document.getElementById('sheetList');
-            const title = document.getElementById('sheetTitle');
-            list.innerHTML = '';
-            sheet.style.display = 'flex';
-            if (type === 'year') {
-                title.innerText = 'Выберите год';
-                availableYears.forEach(y => {
-                    const div = document.createElement('div');
-                    div.className = `sheet-item ${y == selYear ? 'selected' : ''}`;
-                    div.innerText = y;
-                    div.onclick = () => { selYear = y; updateFilterUI(); sheet.style.display = 'none'; loadAnalytics(); };
-                    list.appendChild(div);
-                });
-            } else {
-                title.innerText = 'Выберите месяц';
-                const divAll = document.createElement('div');
-                divAll.className = `sheet-item ${selMonth === 'all' ? 'selected' : ''}`;
-                divAll.innerText = 'Весь год';
-                divAll.onclick = () => { selMonth = 'all'; updateFilterUI(); sheet.style.display = 'none'; loadAnalytics(); };
-                list.appendChild(divAll);
-                monthNames.forEach((m, i) => {
-                    const div = document.createElement('div');
-                    div.className = `sheet-item ${i === selMonth ? 'selected' : ''}`;
-                    div.innerText = m;
-                    div.onclick = () => { selMonth = i; updateFilterUI(); sheet.style.display = 'none'; loadAnalytics(); };
-                    list.appendChild(div);
-                });
-            }
-        }
-        function closeSheet(e) {
-            if (e.target.id === 'sheetModal') document.getElementById('sheetModal').style.display = 'none';
-        }
-
-        function renderTableFromCache(data) {
-             const tbody = document.getElementById('tableBody'), msg = document.getElementById('emptyMsg');
-             if(!data || !data.length) { tbody.innerHTML = ''; msg.style.display = 'block'; msg.innerText = 'Список пуст'; return; }
-             msg.style.display = 'none';
-             let html = '';
-             data.forEach(row => {
-                 const rowJson = JSON.stringify(row).replace(/"/g, '&quot;');
-                 const shortDate = row.dateStr.length >= 10 ? row.dateStr.slice(0, 6) + row.dateStr.slice(8) : row.dateStr;
-                 const iconEdit = `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
-                 const iconDel = `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
-
-                 html += `<tr id="row-${row.rowId}">
-                    <td style="color:var(--text-sub); white-space:nowrap;">${shortDate}</td>
-                    <td style="font-weight:600; line-height:1.2;">${row.name}</td>
-                    <td style="font-weight:700;">${row.total.toLocaleString()}</td>
-                    <td class="action-cell">
-                        <button class="btn-table btn-edit" onclick="openEdit(${rowJson})">${iconEdit}</button>
-                        <button class="btn-table btn-del" onclick="openDelete(${rowJson})">${iconDel}</button>
-                    </td>
-                 </tr>`;
-             });
-             tbody.innerHTML = html;
-        }
-
-        function refreshTable(force = false, isSilent = false) {
-            if(!force && dataCache[currTab]) return;
-            const tbody = document.getElementById('tableBody'), msg = document.getElementById('emptyMsg');
-            setLoading(true);
-            if (!isSilent) { tbody.innerHTML = ''; msg.style.display = 'block'; msg.innerText = 'Загрузка...'; }
-            safeBackendCall('getTableData', {type: currTab}).then(data => {
-                const rows = data.rows || [];
-                dataCache[currTab] = rows; setLoading(false); renderTableFromCache(rows);
-            }).catch(() => { setLoading(false); });
-        }
-
-        function submitEntry() {
-            const name = document.getElementById('inpName').value.trim();
-            const price = parseFloat(document.getElementById('inpPrice').value);
-            const qty = parseFloat(document.getElementById('inpQty').value);
-            if(!name || !price) return;
-            
-            const total = price * qty;
-            const list = currTab === 'income' ? config.incomeItems : config.expenseItems;
-            const isNew = !list.includes(name);
-            if(isNew) list.push(name);
-            const payload = { type: currTab, name: name, price: price, qty: qty, total: total, isNew: isNew };
-            const tbody = document.getElementById('tableBody');
-            document.getElementById('emptyMsg').style.display = 'none';
-            const tempId = 'temp-' + Date.now();
-            const shortDate = new Date().toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'2-digit'});
-            
-            tbody.insertAdjacentHTML('afterbegin', `<tr id="${tempId}" style="background: rgba(var(--accent), 0.05);"><td style="color:var(--text-sub);">${shortDate}</td><td style="font-weight:600;">${name}</td><td style="font-weight:700;">${total.toLocaleString()}</td><td class="action-cell" style="text-align:right;"><span style="font-size:12px; color:var(--text-sub);">...</span></td></tr>`);
-            document.getElementById('inpName').value = ''; document.getElementById('inpPrice').value = ''; document.getElementById('inpQty').value = 1; calcTotal();
-            const btn = document.getElementById('btnAdd'); btn.disabled = true; setLoading(true);
-            safeBackendCall('saveTransaction', payload).then(() => {
-                btn.disabled = false; setLoading(false);
-                showToast('Успешно добавлено'); refreshTable(true, true); analyticsNeedsRefresh = true; loadAnalytics(true);
-            }).catch(() => {
-                btn.disabled = false; setLoading(false);
-                const tempEl = document.getElementById(tempId); if(tempEl) tempEl.remove();
-                document.getElementById('inpName').value = name; document.getElementById('inpPrice').value = price;
-            });
-        }
-
-        function openEdit(row) {
-            document.getElementById('editId').value = row.rowId;
-            document.getElementById('editName').value = row.name; document.getElementById('editPrice').value = row.price; document.getElementById('editQty').value = row.qty; document.getElementById('editModal').style.display = 'flex';
-        }
-        function saveEdit() {
-            const id = document.getElementById('editId').value, name = document.getElementById('editName').value, price = parseFloat(document.getElementById('editPrice').value), qty = parseFloat(document.getElementById('editQty').value);
-            const payload = { rowId: id, type: currTab, name: name, price: price, qty: qty };
-            document.getElementById('editModal').style.display = 'none';
-            const row = document.getElementById('row-' + id);
-            if(row) { 
-                row.cells[1].innerText = name;
-                row.cells[2].innerText = (price * qty).toLocaleString(); 
-                row.style.transition = 'background 0.3s';
-                row.style.background = 'rgba(var(--accent), 0.1)'; 
-                setTimeout(() => row.style.background = 'transparent', 1000);
-            }
-            setLoading(true);
-            safeBackendCall('editTransaction', payload).then(() => {
-                setLoading(false);
-                showToast('Сохранено'); refreshTable(true, true); analyticsNeedsRefresh = true; loadAnalytics(true);
-            }).catch(() => { setLoading(false); refreshTable(true, false); });
-        }
-        function openDelete(row) { deleteTargetId = row.rowId; document.getElementById('deleteModal').style.display = 'flex'; }
-        function confirmDelete() {
-            if(!deleteTargetId) return;
-            document.getElementById('deleteModal').style.display = 'none';
-            const rowElement = document.getElementById('row-' + deleteTargetId);
-            if (rowElement) { rowElement.style.transition = 'opacity 0.3s'; rowElement.style.opacity = '0';
-            setTimeout(() => { if(rowElement) rowElement.remove(); }, 300); }
-            setLoading(true);
-            safeBackendCall('deleteTransaction', {rowId: deleteTargetId, type: currTab}).then(() => {
-                setLoading(false);
-                showToast('Удалено'); refreshTable(true, true); analyticsNeedsRefresh = true; loadAnalytics(true);
-            }).catch(() => { setLoading(false); refreshTable(true, false); });
-        }
-
-        function loadAnalytics(isSilent = false) {
+        function changeStatus(id, newStatus) { safeBackendCall('changeBookingStatus',{id,status:newStatus}).then(()=>{ showToast('Обновлено'); openBookingSheet(activeBookingDate); refreshCalendarPeriod(); }); }
+        function closeBookingSheet() { document.getElementById('bookingSheet').style.display='none'; }
+
+        // --- ANALYTICS ---
+        function loadAnalytics() {
             setLoading(true);
             safeBackendCall('getAnalyticsData', {year: selYear, monthIdx: selMonth}).then(res => {
-                const d = res.data || res;
-                setLoading(false); isAnalyticsLoaded = true; analyticsNeedsRefresh = false;
+                const d = res.data; setLoading(false);
                 renderKPI('kpiInc', d.current.income, d.growth.income, '₽', 'trend-up'); renderKPI('kpiExp', d.current.expense, d.growth.expense, '₽', 'trend-down'); renderKPI('kpiProf', d.current.profit, d.growth.profit, '₽', 'trend-up'); renderKPI('kpiVis', d.current.visitors, d.growth.visitors, 'чел', 'trend-up');
                 renderAreaChart('chartPulse', d.pulse.labels, [{ label:'Доход', data:d.pulse.income, borderColor:'#34C759', bg:'rgba(52, 199, 89, 0.1)' }, { label:'Расход', data:d.pulse.expense, borderColor:'#FF3B30', bg:'rgba(255, 59, 48, 0.1)' }]);
                 renderAreaChart('chartAttendance', d.attendance.labels, [{ label:'Посетители', data:d.attendance.data, borderColor:'#AF52DE', bg:'rgba(175, 82, 222, 0.1)' }]);
-                renderProgressList('listInc', d.pieIncome.labels, d.pieIncome.data, '#34C759');
-                renderProgressList('listExp', d.pieExpense.labels, d.pieExpense.data, '#FF3B30');
+                renderProgressList('listInc', d.pieIncome.labels, d.pieIncome.data, '#34C759'); renderProgressList('listExp', d.pieExpense.labels, d.pieExpense.data, '#FF3B30');
             }).catch(() => { setLoading(false); });
         }
         function renderKPI(id, val, growth, suff, colorCls) {
             document.getElementById(id).innerText = val.toLocaleString() + ' ' + suff;
             const el = document.getElementById(id.replace('kpi','trend'));
-            if(el) { const arr = growth>=0?'↗':'↘'; const cls = (growth>=0 && colorCls==='trend-up') || (growth<0 && colorCls==='trend-down') ? 'trend-up' : 'trend-down'; let finalCls = cls; if(id==='kpiExp') finalCls = (growth > 0) ? 'trend-down' : 'trend-up'; el.className = `kpi-trend ${finalCls}`; el.innerText = `${arr} ${Math.abs(growth)}%`; }
+            if(el) { const arr = growth>=0?'↗':'↘'; let finalCls = (growth>=0 && colorCls==='trend-up') || (growth<0 && colorCls==='trend-down') ? 'trend-up' : 'trend-down'; if(id==='kpiExp') finalCls = (growth > 0) ? 'trend-down' : 'trend-up'; el.className = `kpi-trend ${finalCls}`; el.innerText = `${arr} ${Math.abs(growth)}%`; }
         }
         function renderAreaChart(id, labels, datasets) {
             if(charts[id]) charts[id].destroy();
             const ctx = document.getElementById(id).getContext('2d');
-            const ds = datasets.map(d => ({ label: d.label, data: d.data, borderColor: d.borderColor, backgroundColor: d.bg, borderWidth: 2, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 6 }));
-            charts[id] = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: ds }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1C1C1E', titleColor: '#fff', bodyColor: '#fff', cornerRadius: 8, padding: 10 } }, scales: { x: { grid: { display: false }, ticks: { color: '#8E8E93', font:{size:10} } }, y: { display: false } } } });
+            charts[id] = new Chart(ctx, { type: 'line', data: { labels, datasets: datasets.map(d=>({...d, borderWidth:2, tension:0.4, fill:true})) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display:false }, y: { display: false } } } });
         }
         function renderProgressList(id, labels, data, color) {
-            const el = document.getElementById(id);
-            el.innerHTML = ''; if(!data.length) { el.innerHTML='<div style="color:var(--text-sub); font-size:13px">Нет данных</div>'; return; }
+            const el = document.getElementById(id); el.innerHTML = ''; if(!data.length) return;
             const max = Math.max(...data);
-            labels.forEach((lbl, i) => { const val = data[i]; const pct = (val / max) * 100; const html = `<div class="prog-item"><div class="prog-info"><span>${lbl}</span><span>${val.toLocaleString()}</span></div><div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${pct}%; background:${color}"></div></div></div>`; el.insertAdjacentHTML('beforeend', html); });
+            labels.forEach((lbl, i) => { const pct = (data[i] / max) * 100; el.insertAdjacentHTML('beforeend', `<div class="prog-item"><div class="prog-info"><span>${lbl}</span><span>${data[i].toLocaleString()}</span></div><div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${pct}%; background:${color}"></div></div></div>`); });
         }
-        function showSearch(e) {
-            const val = e.target.value.toLowerCase();
-            const box = document.getElementById('searchRes'); box.innerHTML = ''; if(!val) { box.style.display='none'; return; }
-            const src = currTab==='income' ? config.incomeItems : config.expenseItems;
-            const res = src.filter(s => s.toLowerCase().includes(val)).slice(0,5);
-            if(res.length) { box.style.display='block'; res.forEach(r => { const d = document.createElement('div'); d.className='res-item'; d.innerText=r; d.onclick=()=>{ document.getElementById('inpName').value=r; box.style.display='none'; calcTotal(); }; box.appendChild(d); });
-            } else box.style.display='none';
+        function updateFilterUI() { document.getElementById('txtYear').innerText = selYear; document.getElementById('txtMonth').innerText = (selMonth === 'all') ? 'Весь год' : monthNames[selMonth]; }
+        // openSheet удален, используется openIOSPicker
+
+        // --- CORE ---
+        window.onload = function() {
+             if(window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.expand();
+             setLoading(true);
+             safeBackendCall('getInitialConfig').then(r=>{config=r; availableYears=r.years; setLoading(false); refreshTable(true); loadCalendarData(); loadAnalytics(); }).catch(()=>{setLoading(false);});
+             document.getElementById('venus').addEventListener('animationiteration', ()=>{ if(stopAnim) { document.getElementById('venus').classList.remove('spinning'); stopAnim=false; } });
+             
+             // SWIPES
+             let ts=0; document.addEventListener('touchstart',e=>ts=e.touches[0].clientX);
+             document.addEventListener('touchend',e=>{
+                 const te=e.changedTouches[0].clientX; if(Math.abs(te-ts)<100) return;
+                 const idx=['income','expense','calendar','analytics'].indexOf(currTab);
+                 if(te<ts && idx<3) switchTab(['income','expense','calendar','analytics'][idx+1], idx+1);
+                 if(te>ts && idx>0) switchTab(['income','expense','calendar','analytics'][idx-1], idx-1);
+             });
+        };
+        let activeReq=0, stopAnim=false;
+        function setLoading(a) { const v=document.getElementById('venus'); if(a){activeReq++;stopAnim=false;v.classList.add('spinning');} else{activeReq--;if(activeReq<=0){activeReq=0;stopAnim=true;}} }
+        function switchTab(t,i) { 
+            document.querySelectorAll('.tab-page').forEach(p=>p.classList.remove('active', 'anim-next', 'anim-prev', 'anim-fade'));
+            document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+            document.querySelectorAll('.nav-btn')[i].classList.add('active');
+            const p = document.getElementById(t==='calendar'?'calendarTab':(t==='analytics'?'analyticsTab':'splitTab'));
+            p.classList.add('active','anim-fade');
+            if(t==='calendar') { renderCalendar(); loadCalendarData(); }
+            else if(t==='analytics') loadAnalytics();
+            else { currTab=t; updateUIForTab(t); refreshTable(); }
+            document.getElementById('navInd').style.transform=`translateX(${i*100}%)`;
         }
-        function modVal(id, d) { const el = document.getElementById(id);
-            let v = parseFloat(el.value)||0; v+=d; if(v<0) v=0; if(id==='inpQty' && v<1) v=1; el.value=v; calcTotal();
+        function updateUIForTab(t) {
+            const isInc = t === 'income';
+            document.getElementById('formTitle').innerText = isInc ? 'Добавить МК' : 'Добавить Расход';
+            document.getElementById('lblSearch').innerText = isInc ? 'Название' : 'Описание';
+            document.getElementById('tableTitle').innerText = isInc ? 'Доходы' : 'Расходы';
         }
-        function calcTotal() {
-            const priceVal = document.getElementById('inpPrice').value, nameVal = document.getElementById('inpName').value.trim();
-            const p = parseFloat(priceVal); const q = parseFloat(document.getElementById('inpQty').value);
-            document.getElementById('txtTotal').innerText = ((p*q)||0).toLocaleString() + ' ₽'; const btn = document.getElementById('btnAdd');
-            if (!nameVal) { btn.innerText = "Укажите название"; btn.style.opacity = "0.6";
-            } else if (!priceVal || isNaN(p) || p === 0) { btn.innerText = "Укажите цену"; btn.style.opacity = "0.6";
-            } else { btn.innerText = "Добавить запись"; btn.style.opacity = "1"; }
+        async function safeBackendCall(act, py={}) {
+            if(IS_GOOGLE) return new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(rej)[act](py.id||py.date||py.year||py));
+            else { 
+                if(GAS_URL.includes("ВАШ_")) { alert("Вставь ссылку!"); throw "No URL"; }
+                py.action=act; const r=await fetch(GAS_URL,{method:"POST",body:JSON.stringify(py)}); return await r.json(); 
+            }
         }
-        function showToast(m, err) { const t = document.getElementById('toast');
-            t.innerText=m; t.className = err ? 'toast error show' : 'toast success show'; setTimeout(() => t.className='toast', 3000);
+        function refreshTable(f) {
+            const t=document.getElementById('tableBody'); if(f) t.innerHTML='';
+            safeBackendCall('getTableData',{type:currTab}).then(d=>{
+                t.innerHTML = d.rows.map(r=>{
+                     const json = JSON.stringify(r).replace(/"/g, '&quot;');
+                     return `<tr><td>${r.dateStr.slice(0,5)}</td><td>${r.name}</td><td>${r.total}</td><td><button class="btn-table" onclick="openDelete(${json})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></td></tr>`;
+                }).join('');
+                document.getElementById('emptyMsg').style.display=d.rows.length?'none':'block';
+            });
         }
+        function submitEntry() { 
+            const n=document.getElementById('inpName').value, p=document.getElementById('inpPrice').value, q=document.getElementById('inpQty').value;
+            if(!n||!p) return; 
+            const isInc=currTab==='income'; const list=isInc?config.incomeItems:config.expenseItems; if(!list.includes(n)) list.push(n);
+            safeBackendCall('saveTransaction',{type:currTab, name:n, price:p, qty:q, total:p*q, isNew:true}).then(()=>{ showToast('Добавлено'); refreshTable(true); });
+        }
+        function openDelete(r) { document.getElementById('deleteModal').style.display='flex'; window.delId=r.rowId; }
+        function confirmDelete() { safeBackendCall('deleteTransaction',{rowId:window.delId, type:currTab}).then(()=>{showToast('Удалено'); refreshTable(true); document.getElementById('deleteModal').style.display='none'}); }
+        function modVal(id,d) { const e=document.getElementById(id); e.value=Math.max((id==='inpQty'?1:0), (Number(e.value)||0)+d); calcTotal(); }
+        function calcTotal() { document.getElementById('txtTotal').innerText = ((Number(document.getElementById('inpPrice').value)||0)*(Number(document.getElementById('inpQty').value)||0)).toLocaleString()+' ₽'; }
+        function showSearch(e) { 
+            const v=e.target.value.toLowerCase(), b=document.getElementById('searchRes'), list=currTab==='income'?config.incomeItems:config.expenseItems;
+            b.innerHTML=''; if(!v){b.style.display='none';return;}
+            const f=list.filter(i=>i.toLowerCase().includes(v));
+            if(f.length){b.style.display='block'; f.forEach(r=>{b.innerHTML+=`<div class="res-item" onclick="document.getElementById('inpName').value='${r}';this.parentElement.style.display='none'">${r}</div>`});}
+            else b.style.display='none';
+        }
+        function showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+        function toggleTheme() { const b=document.body; b.dataset.theme=b.dataset.theme==='dark'?'light':'dark'; }
     </script>
 </body>
 </html>
